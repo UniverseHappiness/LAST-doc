@@ -65,7 +65,7 @@ LAST-doc 采用模块化架构设计，主要包括：
 
 ### 环境要求
 
-- Go 1.21+（或根据实际需求）
+- Go 1.21+
 - 企业内网环境
 - CoStrict IDE（用于集成）
 
@@ -91,8 +91,8 @@ go build -o last-doc
 # 服务端口
 PORT=8080
 
-# 文档存储路径
-DOC_STORAGE_PATH=/path/to/docs
+# 文档存储路径（请根据实际部署环境配置）
+DOC_STORAGE_PATH=/var/lib/last-doc/docs
 
 # MCP 服务配置
 MCP_ENABLED=true
