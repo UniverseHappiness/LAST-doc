@@ -1,0 +1,66 @@
+version: '3.8'
+
+services:
+  # Nginx前端服务
+  nginx:
+    image: nginx:alpine
+    container_name: ai-doc-nginx
+    ports:
+      - "80:80"
+      # - "443:443"  # 如果需要HTTPS，取消注释
+    volumes:
+      - ./nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./web/dist:/usr/share/nginx/html:ro
+    depends_on:
+      - backend
+    restart: unless-stopped
+    networks:
+      - ai-doc-network
+
+  # Go后端服务
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: ai-doc-backend
+    ports:
+      - "8080:8080"
+    environment:
+      - DB_HOST=postgres
+      - DB_PORT=5432
+      - DB_USER=postgres
+      - DB_PASSWORD=postgres
+      - DB_NAME=ai_doc_library
+      - SERVER_PORT=8080
+      - STORAGE_DIR=/app/storage
+    volumes:
+      - ./storage:/app/storage
+    depends_on:
+      - postgres
+    restart: unless-stopped
+    networks:
+      - ai-doc-network
+
+  # PostgreSQL数据库
+  postgres:
+    image: postgres:15-alpine
+    container_name: ai-doc-postgres
+    environment:
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgres
+      - POSTGRES_DB=ai_doc_library
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./scripts/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+    ports:
+      - "5432:5432"
+    restart: unless-stopped
+    networks:
+      - ai-doc-network
+
+volumes:
+  postgres_data:
+
+networks:
+  ai-doc-network:
+    driver: bridge
