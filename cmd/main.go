@@ -12,11 +12,11 @@ import (
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
 
-	"ai-doc-library/internal/handler"
-	"ai-doc-library/internal/model"
-	"ai-doc-library/internal/repository"
-	"ai-doc-library/internal/router"
-	"ai-doc-library/internal/service"
+	"github.com/UniverseHappiness/LAST-doc/internal/handler"
+	"github.com/UniverseHappiness/LAST-doc/internal/model"
+	"github.com/UniverseHappiness/LAST-doc/internal/repository"
+	"github.com/UniverseHappiness/LAST-doc/internal/router"
+	"github.com/UniverseHappiness/LAST-doc/internal/service"
 )
 
 func main() {

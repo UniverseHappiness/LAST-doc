@@ -2,9 +2,9 @@ package repository
 
 import (
 	"context"
-	"fmt"
+	"log"
 
-	"ai-doc-library/internal/model"
+	"github.com/UniverseHappiness/LAST-doc/internal/model"
 
 	"gorm.io/gorm"
 )
@@ -39,17 +39,17 @@ func NewDocumentVersionRepository(db *gorm.DB) DocumentVersionRepository {
 
 // Create 创建文档版本
 func (r *documentVersionRepository) Create(ctx context.Context, version *model.DocumentVersion) error {
-	fmt.Printf("DEBUG: 数据库层创建文档版本 - 文档ID: %s, 版本: %s, 版本记录ID: %s\n",
+	log.Printf("DEBUG: 数据库层创建文档版本 - 文档ID: %s, 版本: %s, 版本记录ID: %s\n",
 		version.DocumentID, version.Version, version.ID)
 
 	err := r.db.WithContext(ctx).Create(version).Error
 	if err != nil {
-		fmt.Printf("DEBUG: 数据库层创建文档版本失败 - 文档ID: %s, 版本: %s, 错误: %v\n",
+		log.Printf("DEBUG: 数据库层创建文档版本失败 - 文档ID: %s, 版本: %s, 错误: %v\n",
 			version.DocumentID, version.Version, err)
 		return err
 	}
 
-	fmt.Printf("DEBUG: 数据库层创建文档版本成功 - 文档ID: %s, 版本: %s, 版本记录ID: %s\n",
+	log.Printf("DEBUG: 数据库层创建文档版本成功 - 文档ID: %s, 版本: %s, 版本记录ID: %s\n",
 		version.DocumentID, version.Version, version.ID)
 	return nil
 }

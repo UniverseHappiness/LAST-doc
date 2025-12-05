@@ -2,13 +2,13 @@ package handler
 
 import (
 	"context"
-	"fmt"
+	"log"
 	"net/http"
 	"strconv"
 	"strings"
 
-	"ai-doc-library/internal/model"
-	"ai-doc-library/internal/service"
+	"github.com/UniverseHappiness/LAST-doc/internal/model"
+	"github.com/UniverseHappiness/LAST-doc/internal/service"
 
 	"github.com/gin-gonic/gin"
 )
@@ -76,7 +76,7 @@ func (h *DocumentHandler) UploadDocument(c *gin.Context) {
 	}
 
 	// 添加调试日志
-	fmt.Printf("DEBUG: 前端传递的标签数据 - tagsStr: '%s', 处理后的 tags: %+v (类型: %T)\n", tagsStr, tags, tags)
+	log.Printf("DEBUG: 前端传递的标签数据 - tagsStr: '%s', 处理后的 tags: %+v (类型: %T)\n", tagsStr, tags, tags)
 
 	// 获取上传的文件
 	file, err := c.FormFile("file")
@@ -248,7 +248,7 @@ func (h *DocumentHandler) GetDocumentByVersion(c *gin.Context) {
 	version := c.Param("version")
 
 	// 添加调试日志
-	fmt.Printf("DEBUG: 获取文档版本 - 文档ID: %s, 版本: %s\n", documentID, version)
+	log.Printf("DEBUG: 获取文档版本 - 文档ID: %s, 版本: %s\n", documentID, version)
 
 	if documentID == "" {
 		c.JSON(http.StatusBadRequest, gin.H{
@@ -268,7 +268,7 @@ func (h *DocumentHandler) GetDocumentByVersion(c *gin.Context) {
 
 	documentVersion, err := h.documentService.GetDocumentByVersion(context.Background(), documentID, version)
 	if err != nil {
-		fmt.Printf("DEBUG: 获取文档版本失败 - 文档ID: %s, 版本: %s, 错误: %v\n", documentID, version, err)
+		log.Printf("DEBUG: 获取文档版本失败 - 文档ID: %s, 版本: %s, 错误: %v\n", documentID, version, err)
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"code":    500,
 			"message": "获取文档版本失败: " + err.Error(),
@@ -276,7 +276,7 @@ func (h *DocumentHandler) GetDocumentByVersion(c *gin.Context) {
 		return
 	}
 
-	fmt.Printf("DEBUG: 成功获取文档版本 - 文档ID: %s, 版本: %s, 内容长度: %d, 状态: %s\n",
+	log.Printf("DEBUG: 成功获取文档版本 - 文档ID: %s, 版本: %s, 内容长度: %d, 状态: %s\n",
 		documentID, version, len(documentVersion.Content), documentVersion.Status)
 
 	c.JSON(http.StatusOK, gin.H{

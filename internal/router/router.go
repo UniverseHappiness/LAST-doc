@@ -1,7 +1,7 @@
 package router
 
 import (
-	"ai-doc-library/internal/handler"
+	"github.com/UniverseHappiness/LAST-doc/internal/handler"
 
 	"github.com/gin-gonic/gin"
 )

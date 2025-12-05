@@ -1,4 +1,4 @@
-module ai-doc-library
+module github.com/UniverseHappiness/LAST-doc
 
 go 1.23
 

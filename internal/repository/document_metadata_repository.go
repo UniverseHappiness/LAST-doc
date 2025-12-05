@@ -4,7 +4,7 @@ import (
 	"context"
 	"encoding/json"
 
-	"ai-doc-library/internal/model"
+	"github.com/UniverseHappiness/LAST-doc/internal/model"
 
 	"gorm.io/gorm"
 )

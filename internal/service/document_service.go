@@ -4,13 +4,14 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"log"
 	"mime/multipart"
 	"os"
 	"path/filepath"
 	"time"
 
-	"ai-doc-library/internal/model"
-	"ai-doc-library/internal/repository"
+	"github.com/UniverseHappiness/LAST-doc/internal/model"
+	"github.com/UniverseHappiness/LAST-doc/internal/repository"
 
 	"github.com/google/uuid"
 )
@@ -87,18 +88,18 @@ func (s *documentService) UploadDocument(ctx context.Context, file *multipart.Fi
 
 	// 创建文档存储目录
 	storageDir := filepath.Join(s.baseStorageDir, documentID)
-	fmt.Printf("DEBUG: 创建文档存储目录 - 路径: %s\n", storageDir)
+	log.Printf("DEBUG: 创建文档存储目录 - 路径: %s\n", storageDir)
 	if err := os.MkdirAll(storageDir, 0755); err != nil {
 		return nil, fmt.Errorf("failed to create storage directory: %v", err)
 	}
 
 	// 保存文件
 	filePath := filepath.Join(storageDir, file.Filename)
-	fmt.Printf("DEBUG: 保存文件 - 路径: %s\n", filePath)
+	log.Printf("DEBUG: 保存文件 - 路径: %s\n", filePath)
 	if err := s.saveFile(file, filePath); err != nil {
 		return nil, fmt.Errorf("failed to save file: %v", err)
 	}
-	fmt.Printf("DEBUG: 文件保存成功 - 大小: %d 字节\n", file.Size)
+	log.Printf("DEBUG: 文件保存成功 - 大小: %d 字节\n", file.Size)
 
 	// 如果是新文档，创建文档记录
 	var document *model.Document
@@ -130,10 +131,10 @@ func (s *documentService) UploadDocument(ctx context.Context, file *multipart.Fi
 	}
 
 	// 检查版本号是否已存在
-	fmt.Printf("DEBUG: 检查版本号唯一性 - 文档ID: %s, 版本: %s\n", documentID, version)
+	log.Printf("DEBUG: 检查版本号唯一性 - 文档ID: %s, 版本: %s\n", documentID, version)
 	existingVersion, err := s.versionRepo.GetByDocumentIDAndVersion(ctx, documentID, version)
 	if err == nil && existingVersion != nil {
-		fmt.Printf("DEBUG: 版本号已存在 - 文档ID: %s, 版本: %s, 现有版本ID: %s\n",
+		log.Printf("DEBUG: 版本号已存在 - 文档ID: %s, 版本: %s, 现有版本ID: %s\n",
 			documentID, version, existingVersion.ID)
 		// 删除已保存的文件
 		os.Remove(filePath)
@@ -143,7 +144,7 @@ func (s *documentService) UploadDocument(ctx context.Context, file *multipart.Fi
 		}
 		return nil, fmt.Errorf("版本号 %s 已存在，请使用不同的版本号", version)
 	}
-	fmt.Printf("DEBUG: 版本号唯一性检查通过 - 文档ID: %s, 版本: %s\n", documentID, version)
+	log.Printf("DEBUG: 版本号唯一性检查通过 - 文档ID: %s, 版本: %s\n", documentID, version)
 
 	// 创建文档版本记录
 	documentVersion := &model.DocumentVersion{
@@ -158,10 +159,10 @@ func (s *documentService) UploadDocument(ctx context.Context, file *multipart.Fi
 		UpdatedAt:   time.Now(),
 	}
 
-	fmt.Printf("DEBUG: 准备创建文档版本记录 - 文档ID: %s, 版本: %s, 版本记录ID: %s\n",
+	log.Printf("DEBUG: 准备创建文档版本记录 - 文档ID: %s, 版本: %s, 版本记录ID: %s\n",
 		documentID, version, documentVersion.ID)
 	if err := s.versionRepo.Create(ctx, documentVersion); err != nil {
-		fmt.Printf("DEBUG: 创建文档版本记录失败 - 文档ID: %s, 版本: %s, 错误: %v\n",
+		log.Printf("DEBUG: 创建文档版本记录失败 - 文档ID: %s, 版本: %s, 错误: %v\n",
 			documentID, version, err)
 		// 删除已保存的文件
 		os.Remove(filePath)
@@ -171,11 +172,11 @@ func (s *documentService) UploadDocument(ctx context.Context, file *multipart.Fi
 		}
 		return nil, fmt.Errorf("failed to create document version record: %v", err)
 	}
-	fmt.Printf("DEBUG: 文档版本记录创建成功 - 文档ID: %s, 版本: %s, 版本记录ID: %s\n",
+	log.Printf("DEBUG: 文档版本记录创建成功 - 文档ID: %s, 版本: %s, 版本记录ID: %s\n",
 		documentID, version, documentVersion.ID)
 
 	// 异步处理文档解析
-	fmt.Printf("DEBUG: 开始异步处理文档解析 - 文档ID: %s, 版本: %s, 文件路径: %s\n", documentID, version, filePath)
+	log.Printf("DEBUG: 开始异步处理文档解析 - 文档ID: %s, 版本: %s, 文件路径: %s\n", documentID, version, filePath)
 	go s.processDocumentWithFile(documentID, version, filePath)
 
 	return document, nil
@@ -301,23 +302,23 @@ func (s *documentService) saveFile(file *multipart.FileHeader, filePath string) 
 
 // processDocument 处理文档（解析、提取元数据等）
 func (s *documentService) processDocument(documentID string) {
-	fmt.Printf("DEBUG: 进入processDocument函数 - 文档ID: %s\n", documentID)
+	log.Printf("DEBUG: 进入processDocument函数 - 文档ID: %s\n", documentID)
 	ctx := context.Background()
 
 	// 获取文档信息
-	fmt.Printf("DEBUG: 获取文档信息 - 文档ID: %s\n", documentID)
+	log.Printf("DEBUG: 获取文档信息 - 文档ID: %s\n", documentID)
 	document, err := s.documentRepo.GetByID(ctx, documentID)
 	if err != nil {
-		fmt.Printf("DEBUG: 获取文档信息失败 - 文档ID: %s, 错误: %v\n", documentID, err)
+		log.Printf("DEBUG: 获取文档信息失败 - 文档ID: %s, 错误: %v\n", documentID, err)
 		return
 	}
-	fmt.Printf("DEBUG: 成功获取文档信息 - 文档ID: %s, 名称: %s, 版本: %s, 状态: %s\n", documentID, document.Name, document.Version, document.Status)
+	log.Printf("DEBUG: 成功获取文档信息 - 文档ID: %s, 名称: %s, 版本: %s, 状态: %s\n", documentID, document.Name, document.Version, document.Status)
 
 	// 解析文档
-	fmt.Printf("DEBUG: 开始解析文档 - 文档ID: %s, 文件路径: %s, 类型: %s\n", documentID, document.FilePath, document.Type)
+	log.Printf("DEBUG: 开始解析文档 - 文档ID: %s, 文件路径: %s, 类型: %s\n", documentID, document.FilePath, document.Type)
 	content, metadata, err := s.parserService.ParseDocument(ctx, document.FilePath, document.Type)
 	if err != nil {
-		fmt.Printf("DEBUG: 解析文档失败 - 文档ID: %s, 错误: %v\n", documentID, err)
+		log.Printf("DEBUG: 解析文档失败 - 文档ID: %s, 错误: %v\n", documentID, err)
 		// 更新文档状态为失败
 		s.documentRepo.Update(ctx, documentID, map[string]interface{}{
 			"status": model.DocumentStatusFailed,
@@ -325,22 +326,22 @@ func (s *documentService) processDocument(documentID string) {
 		s.versionRepo.UpdateStatus(ctx, documentID, document.Version, model.DocumentStatusFailed)
 		return
 	}
-	fmt.Printf("DEBUG: 文档解析成功 - 文档ID: %s, 内容长度: %d\n", documentID, len(content))
+	log.Printf("DEBUG: 文档解析成功 - 文档ID: %s, 内容长度: %d\n", documentID, len(content))
 
 	// 更新文档内容
-	fmt.Printf("DEBUG: 更新文档内容和状态 - 文档ID: %s\n", documentID)
+	log.Printf("DEBUG: 更新文档内容和状态 - 文档ID: %s\n", documentID)
 	s.documentRepo.Update(ctx, documentID, map[string]interface{}{
 		"content": content,
 		"status":  model.DocumentStatusCompleted,
 	})
 
 	// 更新文档版本内容
-	fmt.Printf("DEBUG: 更新文档版本内容和状态 - 文档ID: %s, 版本: %s\n", documentID, document.Version)
+	log.Printf("DEBUG: 更新文档版本内容和状态 - 文档ID: %s, 版本: %s\n", documentID, document.Version)
 	s.versionRepo.UpdateContent(ctx, documentID, document.Version, content, model.DocumentStatusCompleted)
 
 	// 保存元数据
 	if len(metadata) > 0 {
-		fmt.Printf("DEBUG: 保存文档元数据 - 文档ID: %s\n", documentID)
+		log.Printf("DEBUG: 保存文档元数据 - 文档ID: %s\n", documentID)
 		docMetadata := &model.DocumentMetadata{
 			ID:         uuid.New().String(),
 			DocumentID: documentID,
@@ -350,28 +351,28 @@ func (s *documentService) processDocument(documentID string) {
 		}
 		s.metadataRepo.Create(ctx, docMetadata)
 	}
-	fmt.Printf("DEBUG: 文档处理完成 - 文档ID: %s\n", documentID)
+	log.Printf("DEBUG: 文档处理完成 - 文档ID: %s\n", documentID)
 }
 
 // processDocumentWithFile 处理带指定文件路径的文档（用于版本处理）
 func (s *documentService) processDocumentWithFile(documentID, version, filePath string) {
-	fmt.Printf("DEBUG: 进入processDocumentWithFile函数 - 文档ID: %s, 版本: %s, 文件路径: %s\n", documentID, version, filePath)
+	log.Printf("DEBUG: 进入processDocumentWithFile函数 - 文档ID: %s, 版本: %s, 文件路径: %s\n", documentID, version, filePath)
 	ctx := context.Background()
 
 	// 获取文档信息
-	fmt.Printf("DEBUG: 获取文档信息 - 文档ID: %s\n", documentID)
+	log.Printf("DEBUG: 获取文档信息 - 文档ID: %s\n", documentID)
 	document, err := s.documentRepo.GetByID(ctx, documentID)
 	if err != nil {
-		fmt.Printf("DEBUG: 获取文档信息失败 - 文档ID: %s, 错误: %v\n", documentID, err)
+		log.Printf("DEBUG: 获取文档信息失败 - 文档ID: %s, 错误: %v\n", documentID, err)
 		return
 	}
-	fmt.Printf("DEBUG: 成功获取文档信息 - 文档ID: %s, 名称: %s, 版本: %s, 状态: %s\n", documentID, document.Name, document.Version, document.Status)
+	log.Printf("DEBUG: 成功获取文档信息 - 文档ID: %s, 名称: %s, 版本: %s, 状态: %s\n", documentID, document.Name, document.Version, document.Status)
 
 	// 解析文档
-	fmt.Printf("DEBUG: 开始解析文档 - 文档ID: %s, 文件路径: %s, 类型: %s\n", documentID, filePath, document.Type)
+	log.Printf("DEBUG: 开始解析文档 - 文档ID: %s, 文件路径: %s, 类型: %s\n", documentID, filePath, document.Type)
 	content, metadata, err := s.parserService.ParseDocument(ctx, filePath, document.Type)
 	if err != nil {
-		fmt.Printf("DEBUG: 解析文档失败 - 文档ID: %s, 错误: %v\n", documentID, err)
+		log.Printf("DEBUG: 解析文档失败 - 文档ID: %s, 错误: %v\n", documentID, err)
 		// 更新文档状态为失败
 		s.documentRepo.Update(ctx, documentID, map[string]interface{}{
 			"status": model.DocumentStatusFailed,
@@ -379,22 +380,22 @@ func (s *documentService) processDocumentWithFile(documentID, version, filePath 
 		s.versionRepo.UpdateStatus(ctx, documentID, version, model.DocumentStatusFailed)
 		return
 	}
-	fmt.Printf("DEBUG: 文档解析成功 - 文档ID: %s, 内容长度: %d\n", documentID, len(content))
+	log.Printf("DEBUG: 文档解析成功 - 文档ID: %s, 内容长度: %d\n", documentID, len(content))
 
 	// 更新文档内容
-	fmt.Printf("DEBUG: 更新文档内容和状态 - 文档ID: %s\n", documentID)
+	log.Printf("DEBUG: 更新文档内容和状态 - 文档ID: %s\n", documentID)
 	s.documentRepo.Update(ctx, documentID, map[string]interface{}{
 		"content": content,
 		"status":  model.DocumentStatusCompleted,
 	})
 
 	// 更新文档版本内容
-	fmt.Printf("DEBUG: 更新文档版本内容和状态 - 文档ID: %s, 版本: %s\n", documentID, version)
+	log.Printf("DEBUG: 更新文档版本内容和状态 - 文档ID: %s, 版本: %s\n", documentID, version)
 	s.versionRepo.UpdateContent(ctx, documentID, version, content, model.DocumentStatusCompleted)
 
 	// 保存元数据
 	if len(metadata) > 0 {
-		fmt.Printf("DEBUG: 保存文档元数据 - 文档ID: %s\n", documentID)
+		log.Printf("DEBUG: 保存文档元数据 - 文档ID: %s\n", documentID)
 		docMetadata := &model.DocumentMetadata{
 			ID:         uuid.New().String(),
 			DocumentID: documentID,
@@ -404,7 +405,7 @@ func (s *documentService) processDocumentWithFile(documentID, version, filePath 
 		}
 		s.metadataRepo.Create(ctx, docMetadata)
 	}
-	fmt.Printf("DEBUG: 文档处理完成 - 文档ID: %s, 版本: %s\n", documentID, version)
+	log.Printf("DEBUG: 文档处理完成 - 文档ID: %s, 版本: %s\n", documentID, version)
 }
 
 // isValidDocumentType 验证文档类型是否有效

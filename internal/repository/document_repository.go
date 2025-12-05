@@ -4,8 +4,8 @@ import (
 	"context"
 	"time"
 
+	"github.com/UniverseHappiness/LAST-doc/internal/model"
 	"gorm.io/gorm"
-	"ai-doc-library/internal/model"
 )
 
 // DocumentRepository 文档仓库接口

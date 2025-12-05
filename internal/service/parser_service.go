@@ -7,7 +7,7 @@ import (
 	"path/filepath"
 	"strings"
 
-	"ai-doc-library/internal/model"
+	"github.com/UniverseHappiness/LAST-doc/internal/model"
 )
 
 // DocumentParserService 解析服务接口
@@ -87,9 +87,9 @@ func (p *markdownParser) SupportedExtensions() []string {
 // extractMarkdownMetadata 提取Markdown元数据
 func extractMarkdownMetadata(content string) map[string]interface{} {
 	metadata := make(map[string]interface{})
-	
+
 	lines := strings.Split(content, "\n")
-	
+
 	// 提取标题
 	for _, line := range lines {
 		if strings.HasPrefix(line, "# ") {
@@ -97,10 +97,10 @@ func extractMarkdownMetadata(content string) map[string]interface{} {
 			break
 		}
 	}
-	
+
 	// 统计字数
 	metadata["word_count"] = len(strings.Fields(content))
-	
+
 	// 统计代码块数量
 	codeBlockCount := 0
 	for _, line := range lines {
@@ -109,7 +109,7 @@ func extractMarkdownMetadata(content string) map[string]interface{} {
 		}
 	}
 	metadata["code_block_count"] = codeBlockCount / 2
-	
+
 	return metadata
 }
 
@@ -208,22 +208,22 @@ func (p *swaggerParser) SupportedExtensions() []string {
 // extractSwaggerMetadata 提取Swagger元数据
 func extractSwaggerMetadata(content string) map[string]interface{} {
 	metadata := make(map[string]interface{})
-	
+
 	// 简单的元数据提取，实际应用中应该使用Swagger/OpenAPI解析库
 	if strings.Contains(content, "\"swagger\"") {
 		metadata["spec_version"] = "swagger"
 	} else if strings.Contains(content, "\"openapi\"") {
 		metadata["spec_version"] = "openapi"
 	}
-	
+
 	if strings.Contains(content, "\"info\"") {
 		metadata["has_info"] = true
 	}
-	
+
 	if strings.Contains(content, "\"paths\"") {
 		metadata["has_paths"] = true
 	}
-	
+
 	return metadata
 }
 
@@ -276,21 +276,21 @@ func (p *javaDocParser) SupportedExtensions() []string {
 // extractJavaDocMetadata 提取JavaDoc元数据
 func extractJavaDocMetadata(content string) map[string]interface{} {
 	metadata := make(map[string]interface{})
-	
+
 	// 简单的JavaDoc元数据提取
 	classCount := strings.Count(content, "class=\"")
 	methodCount := strings.Count(content, "method=\"")
-	
+
 	metadata["class_count"] = classCount
 	metadata["method_count"] = methodCount
-	
+
 	return metadata
 }
 
 // GetParserByExtension 根据文件扩展名获取解析器
 func GetParserByExtension(filePath string) DocumentParser {
 	ext := strings.ToLower(filepath.Ext(filePath))
-	
+
 	switch ext {
 	case ".md", ".markdown":
 		return NewMarkdownParser()
