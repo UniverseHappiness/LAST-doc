@@ -1,0 +1,474 @@
+# AI技术文档库 (LAST-doc)
+
+一个基于Go后端、Vue前端和Python解析服务的智能文档管理系统，支持文档上传、解析、版本控制和元数据管理。
+
+## 目录
+
+- [项目概述](#项目概述)
+- [功能特性](#功能特性)
+- [架构设计](#架构设计)
+- [技术栈](#技术栈)
+- [快速开始](#快速开始)
+- [部署说明](#部署说明)
+- [API文档](#api文档)
+- [开发指南](#开发指南)
+- [测试](#测试)
+- [贡献指南](#贡献指南)
+- [更新说明](#更新说明)
+- [许可证](#许可证)
+
+## 项目概述
+
+AI技术文档库是一个综合性的文档管理系统，旨在为企业或团队提供高效的文档存储、检索和管理解决方案。系统采用前后端分离架构，结合了现代Web技术栈和微服务设计，提供了强大的文档解析能力和灵活的版本控制功能。
+
+## 功能特性
+
+- **文档管理**：支持多种格式文档的上传、下载、预览和管理
+- **文档解析**：自动解析PDF和DOCX文档内容，提取文本和元数据
+- **版本控制**：支持文档版本管理，可查看和恢复历史版本
+- **元数据管理**：支持自定义元数据，增强文档检索和分类能力
+- **标签系统**：灵活的标签系统，便于文档分类和检索
+- **权限管理**：基础的用户权限控制，确保文档安全
+- **RESTful API**：标准化的API接口，便于集成和扩展
+
+## 架构设计
+
+系统采用微服务架构，主要包含以下组件：
+
+1. **前端服务**：基于Vue.js 3和Bootstrap 5的Web应用
+2. **后端服务**：Go语言实现的RESTful API服务
+3. **文档解析服务**：Python实现的gRPC微服务，负责文档解析
+4. **数据库**：PostgreSQL，存储文档元数据和内容
+5. **文件存储**：本地文件系统存储文档文件
+6. **反向代理**：Nginx，提供静态文件服务和API代理
+
+### 系统架构图
+
+```
+┌─────────────┐     ┌──────────────┐     ┌─────────────────┐
+│   Nginx     │────▶│   Go后端     │────▶│  PostgreSQL     │
+│ (反向代理)  │     │   (API服务)  │     │   (数据库)      │
+└─────────────┘     └──────────────┘     └─────────────────┘
+       │                    │                     │
+       │                    │                     │
+       │                    ▼                     │
+       │            ┌──────────────┐              │
+       │            │ Python解析   │              │
+       │            │ 服务(gRPC)   │              │
+       │            └──────────────┘              │
+       │                                          │
+       ▼                                          │
+┌─────────────┐                                  │
+│   前端应用   │                                  │
+│  (Vue.js)   │                                  │
+└─────────────┘                                  │
+       │                                          │
+       └──────────────────────────────────────────┘
+                        │
+                        ▼
+                ┌──────────────┐
+                │  文件存储    │
+                │ (本地存储)   │
+                └──────────────┘
+```
+
+### 数据库设计
+
+系统主要包含三个核心数据表：
+
+1. **documents**：文档主表，存储文档基本信息
+2. **document_versions**：文档版本表，管理文档历史版本
+3. **document_metadata**：文档元数据表，存储扩展元数据信息
+
+详细的表结构请参考 [`docs/draft.md`](docs/draft.md:1)。
+
+## 技术栈
+
+### 后端技术栈
+- **编程语言**：Go 1.24
+- **Web框架**：Gin
+- **ORM**：GORM
+- **数据库**：PostgreSQL
+- **gRPC**：Google gRPC
+
+### 前端技术栈
+- **框架**：Vue.js 3
+- **UI库**：Bootstrap 5
+- **构建工具**：Vite
+- **HTTP客户端**：Axios
+
+### 文档解析服务
+- **编程语言**：Python 3.8+
+- **gRPC框架**：gRPC
+- **文档解析**：
+  - PDF：PyPDF2、pdfplumber
+  - DOCX：python-docx
+
+### 部署和运维
+- **容器化**：Docker & Docker Compose
+- **反向代理**：Nginx
+- **进程管理**：systemd
+
+## 快速开始
+
+### 环境要求
+
+- Go 1.24+
+- Node.js 16+
+- Python 3.8+
+- PostgreSQL 15+
+- Docker & Docker Compose (可选)
+
+### 使用Docker Compose启动（推荐）
+
+1. **克隆项目**
+   ```bash
+   git clone https://github.com/UniverseHappiness/LAST-doc.git
+   cd LAST-doc
+   ```
+
+2. **启动所有服务**
+   ```bash
+   docker-compose up -d
+   ```
+
+3. **访问应用**
+   - 前端界面：http://localhost
+   - 后端API：http://localhost:8080
+
+### 手动启动
+
+#### 1. 启动数据库
+
+```bash
+# 使用Docker启动PostgreSQL
+docker run -d --name postgres \
+  -e POSTGRES_USER=postgres \
+  -e POSTGRES_PASSWORD=postgres \
+  -e POSTGRES_DB=ai_doc_library \
+  -p 5432:5432 \
+  postgres:15-alpine
+
+# 初始化数据库
+psql -h localhost -U postgres -d ai_doc_library -f scripts/init.sql
+```
+
+#### 2. 启动后端服务
+
+```bash
+# 编译Go应用
+go build -o bin/ai-doc-library cmd/main.go
+
+# 设置环境变量
+export DB_HOST=localhost
+export DB_PORT=5432
+export DB_USER=postgres
+export DB_PASSWORD=postgres
+export DB_NAME=ai_doc_library
+export SERVER_PORT=8080
+export STORAGE_DIR=./storage
+
+# 创建存储目录
+mkdir -p storage
+
+# 启动服务
+./bin/ai-doc-library
+```
+
+#### 3. 启动Python解析服务
+
+```bash
+cd python-parser-service
+
+# 安装依赖
+python3 -m venv venv
+source venv/bin/activate
+pip install -r requirements.txt
+
+# 生成gRPC代码
+./generate_grpc.sh
+
+# 启动服务
+python -m service.server
+```
+
+#### 4. 构建和启动前端
+
+```bash
+cd web
+
+# 安装依赖
+npm install
+
+# 开发模式启动
+npm run dev
+
+# 或构建生产版本
+npm run build
+```
+
+## 部署说明
+
+详细的部署指南请参考 [`DEPLOYMENT.md`](DEPLOYMENT.md:1)。
+
+### Docker Compose部署
+
+```bash
+# 构建并启动所有服务
+docker-compose up -d
+
+# 查看服务状态
+docker-compose ps
+
+# 查看日志
+docker-compose logs -f
+
+# 停止服务
+docker-compose down
+```
+
+### 手动部署
+
+手动部署各个组件的步骤请参考 [`DEPLOYMENT.md`](DEPLOYMENT.md:64) 中的"方式二：手动部署"部分。
+
+### Python解析服务部署
+
+Python解析服务的详细部署指南请参考 [`DEPLOYMENT.md`](DEPLOYMENT.md:347) 中的"Python解析服务部署"部分。
+
+## API文档
+
+### 基础信息
+
+- **基础URL**：`/api/v1`
+- **认证方式**：无（当前版本）
+- **数据格式**：JSON
+
+### 主要端点
+
+#### 健康检查
+- **GET** `/health` - 检查服务状态
+
+#### 文档管理
+- **GET** `/documents` - 获取文档列表
+- **POST** `/documents` - 上传新文档
+- **GET** `/documents/{id}` - 获取文档详情
+- **PUT** `/documents/{id}` - 更新文档信息
+- **DELETE** `/documents/{id}` - 删除文档
+
+#### 文档版本
+- **GET** `/documents/{id}/versions` - 获取文档版本列表
+- **POST** `/documents/{id}/versions` - 创建新版本
+- **GET** `/documents/{id}/versions/{version}` - 获取特定版本详情
+
+#### 文档元数据
+- **GET** `/documents/{id}/metadata` - 获取文档元数据
+- **POST** `/documents/{id}/metadata` - 添加文档元数据
+- **PUT** `/documents/{id}/metadata/{key}` - 更新元数据
+- **DELETE** `/documents/{id}/metadata/{key}` - 删除元数据
+
+### 响应格式
+
+成功响应：
+```json
+{
+  "code": 0,
+  "message": "success",
+  "data": {
+    // 响应数据
+  }
+}
+```
+
+错误响应：
+```json
+{
+  "code": 非0值,
+  "message": "错误描述",
+  "data": null
+}
+```
+
+## 开发指南
+
+### 项目结构
+
+```
+LAST-doc/
+├── cmd/                    # Go应用程序入口
+│   ├── main.go            # 主程序入口
+│   └── main_test.go       # 主程序测试
+├── internal/              # 内部包，不对外暴露
+│   ├── handler/           # HTTP请求处理器
+│   ├── model/             # 数据模型
+│   ├── repository/        # 数据访问层
+│   ├── router/            # 路由配置
+│   └── service/           # 业务逻辑层
+├── proto/                 # Protocol Buffers定义
+├── python-parser-service/ # Python解析服务
+│   ├── proto/             # gRPC协议定义
+│   └── service/           # 解析服务实现
+├── scripts/               # 数据库脚本
+├── web/                   # 前端应用
+│   └── src/               # 前端源码
+├── docs/                  # 文档
+├── docker-compose.yml     # Docker Compose配置
+├── Dockerfile            # Docker镜像配置
+├── nginx.conf            # Nginx配置
+├── Makefile              # 构建脚本
+└── README.md             # 项目说明
+```
+
+### 后端开发
+
+#### 添加新的API端点
+
+1. 在 [`internal/handler/`](internal/handler) 中添加处理器函数
+2. 在 [`internal/router/router.go`](internal/router/router.go) 中注册路由
+3. 在 [`internal/service/`](internal/service) 中实现业务逻辑
+4. 在 [`internal/repository/`](internal/repository) 中实现数据访问
+5. 在 [`internal/model/`](internal/model) 中定义数据模型
+
+#### 数据库迁移
+
+```bash
+# 创建新的迁移脚本
+# 将SQL文件添加到scripts/目录
+
+# 应用迁移
+psql -h localhost -U postgres -d ai_doc_library -f scripts/your_migration.sql
+```
+
+### 前端开发
+
+#### 添加新页面
+
+1. 在 [`web/src/views/`](web/src/views) 中创建新的Vue组件
+2. 在 [`web/src/router/`](web/src/router) 中添加路由配置
+3. 在 [`web/src/utils/documentService.js`](web/src/utils/documentService.js) 中添加API调用方法
+
+#### 组件开发
+
+遵循Vue.js 3的组合式API风格，使用Bootstrap 5组件库。
+
+### Python解析服务开发
+
+#### 添加新的文档格式支持
+
+1. 在 [`python-parser-service/service/`](python-parser-service/service) 中创建新的解析器类
+2. 在 [`python-parser-service/proto/`](python-parser-service/proto) 中更新Protocol Buffers定义
+3. 在 [`python-parser-service/service/server.py`](python-parser-service/service/server.py) 中注册新解析器
+
+#### 运行测试
+
+```bash
+cd python-parser-service
+
+# 运行所有测试
+python -m pytest
+
+# 运行特定测试
+python -m pytest test_service.py
+```
+
+## 测试
+
+### 后端测试
+
+```bash
+# 运行所有测试
+go test ./...
+
+# 运行特定包的测试
+go test ./internal/service
+
+# 运行测试并生成覆盖率报告
+go test -cover ./...
+```
+
+### 前端测试
+
+```bash
+cd web
+
+# 运行测试
+npm test
+
+# 或使用Vite的测试插件
+npm run test:unit
+```
+
+### 集成测试
+
+```bash
+# 使用测试脚本
+./scripts/test-runner.sh
+```
+
+## 贡献指南
+
+我们欢迎任何形式的贡献，包括但不限于：
+
+- 修复bug
+- 添加新功能
+- 改进文档
+- 提供建议
+
+### 提交规范
+
+请遵循以下提交信息格式：
+
+```
+<类型>(<范围>): <描述>
+
+[可选的详细描述]
+
+[可选的引用]
+```
+
+类型包括：
+- feat：新功能
+- fix：修复bug
+- docs：文档更新
+- style：代码格式调整
+- refactor：重构
+- test：测试相关
+- chore：构建/工具相关
+
+### 开发流程
+
+1. Fork项目
+2. 创建功能分支：`git checkout -b feature/your-feature-name`
+3. 提交更改：`git commit -m "feat: add new feature"`
+4. 推送分支：`git push origin feature/your-feature-name`
+5. 创建Pull Request
+
+### 代码规范
+
+- Go代码遵循Go官方代码规范
+- JavaScript代码遵循ESLint规范
+- Python代码遵循PEP 8规范
+
+## 更新说明
+
+### v1.0.0 (2025-12-06)
+- 初始版本发布
+- 实现基本的文档管理功能
+- 支持PDF和DOCX等文档解析
+- 实现文档版本控制
+- 添加元数据管理功能
+- 完善前端用户界面
+- 提供完整的部署文档
+
+### 计划中的功能
+- [ ] 用户认证和权限管理
+- [ ] 文档全文搜索
+- [ ] 文档预览功能
+- [ ] 批量操作支持
+- [ ] 更多文档格式支持（PPT、XLS等）
+- [ ] 文档协作功能
+- [ ] API限流和安全增强
+- [ ] 性能优化和缓存机制
+
+## 许可证
+
+本项目采用 MIT 许可证。详情请参阅 [LICENSE](LICENSE) 文件。
