@@ -42,13 +42,25 @@
             <div v-else-if="document.type === 'pdf'" class="mb-0">
               <div class="pdf-preview">
                 <p class="text-muted">PDF 文档预览</p>
-                <p>PDF 文档内容无法直接预览，请点击下载按钮查看完整文档</p>
+                <div v-if="document.content && document.content.trim() !== ''">
+                  <pre class="pdf-content">{{ document.content }}</pre>
+                  <p class="text-info small mt-2">PDF 文档已提取文本内容，如需查看完整格式请下载文件</p>
+                </div>
+                <div v-else>
+                  <p>PDF 文档内容无法直接预览，请点击下载按钮查看完整文档</p>
+                </div>
               </div>
             </div>
             <div v-else-if="document.type === 'docx'" class="mb-0">
               <div class="docx-preview">
                 <p class="text-muted">DOCX 文档预览</p>
-                <p>DOCX 文档内容无法直接预览，请点击下载按钮查看完整文档</p>
+                <div v-if="document.content && document.content.trim() !== ''">
+                  <pre class="docx-content">{{ document.content }}</pre>
+                  <p class="text-info small mt-2">DOCX 文档已提取文本内容，如需查看完整格式请下载文件</p>
+                </div>
+                <div v-else>
+                  <p>DOCX 文档内容无法直接预览，请点击下载按钮查看完整文档</p>
+                </div>
               </div>
             </div>
             <div v-else class="mb-0">
@@ -271,8 +283,24 @@ export default {
   overflow-y: auto;
 }
 
+.document-content pre.pdf-content {
+  background-color: #f8f9fa;
+  border: 1px solid #dee2e6;
+  padding: 15px;
+  font-family: 'Courier New', monospace;
+  font-size: 14px;
+  line-height: 1.5;
+}
+
 .document-metadata pre {
   max-height: 300px;
   overflow-y: auto;
+}
+
+.pdf-preview {
+  border: 1px solid #dee2e6;
+  border-radius: 4px;
+  padding: 15px;
+  background-color: #f8f9fa;
 }
 </style>

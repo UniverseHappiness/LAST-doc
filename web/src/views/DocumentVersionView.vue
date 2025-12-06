@@ -35,10 +35,43 @@
             <div v-else>
               <pre v-if="documentType === 'markdown' || documentType === 'java_doc'" class="mb-0">{{ documentVersion.content }}</pre>
               <div v-else-if="documentType === 'swagger' || documentType === 'openapi'" class="mb-0">
-                <pre>{{ JSON.stringify(JSON.parse(documentVersion.content), null, 2) }}</pre>
+                <pre>{{ formatJsonContent(documentVersion.content) }}</pre>
+              </div>
+              <div v-else-if="documentType === 'pdf'" class="mb-0">
+                <div class="pdf-preview">
+                  <p class="text-muted">PDF 版本文档预览</p>
+                  <div v-if="documentVersion.content && documentVersion.content.trim() !== ''">
+                    <pre class="pdf-content">{{ documentVersion.content }}</pre>
+                    <p class="text-info small mt-2">PDF 文档已提取文本内容，如需查看完整格式请下载文件</p>
+                  </div>
+                  <div v-else>
+                    <p>PDF 版本文档内容无法直接预览，请点击下载按钮查看完整文档</p>
+                  </div>
+                </div>
+              </div>
+              <div v-else-if="documentType === 'docx'" class="mb-0">
+                <div class="docx-preview">
+                  <p class="text-muted">DOCX 版本文档预览</p>
+                  <div v-if="documentVersion.content && documentVersion.content.trim() !== ''">
+                    <pre class="docx-content">{{ documentVersion.content }}</pre>
+                    <p class="text-info small mt-2">DOCX 文档已提取文本内容，如需查看完整格式请下载文件</p>
+                  </div>
+                  <div v-else>
+                    <p>DOCX 版本文档内容无法直接预览，请点击下载按钮查看完整文档</p>
+                  </div>
+                </div>
               </div>
               <div v-else class="mb-0">
-                <p>文档内容解析中，请稍后再试...</p>
+                <div class="other-doc-preview">
+                  <p class="text-muted">{{ documentType.toUpperCase() }} 版本文档预览</p>
+                  <div v-if="documentVersion.content && documentVersion.content.trim() !== ''">
+                    <pre class="other-content">{{ documentVersion.content }}</pre>
+                    <p class="text-info small mt-2">文档已提取内容，如需查看完整格式请下载文件</p>
+                  </div>
+                  <div v-else>
+                    <p>文档内容无法直接预览，请点击下载按钮查看完整文档</p>
+                  </div>
+                </div>
               </div>
             </div>
           </div>
@@ -354,6 +387,16 @@ export default {
       }
     })
     
+    // 格式化JSON内容
+    const formatJsonContent = (content) => {
+      try {
+        return JSON.stringify(JSON.parse(content), null, 2)
+      } catch (e) {
+        console.error('JSON格式化失败:', e)
+        return content
+      }
+    }
+    
     return {
       documentVersion,
       documentType,
@@ -363,7 +406,8 @@ export default {
       getStatusBadgeClass,
       getStatusText,
       formatFileSize,
-      formatDate
+      formatDate,
+      formatJsonContent
     }
   }
 }
@@ -375,5 +419,25 @@ export default {
   word-wrap: break-word;
   max-height: 500px;
   overflow-y: auto;
+}
+
+.document-content pre.pdf-content,
+.document-content pre.docx-content,
+.document-content pre.other-content {
+  background-color: #f8f9fa;
+  border: 1px solid #dee2e6;
+  padding: 15px;
+  font-family: 'Courier New', monospace;
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+.pdf-preview,
+.docx-preview,
+.other-doc-preview {
+  border: 1px solid #dee2e6;
+  border-radius: 4px;
+  padding: 15px;
+  background-color: #f8f9fa;
 }
 </style>

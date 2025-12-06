@@ -4,12 +4,13 @@
 
 ## 架构概述
 
-本项目采用前后端分离的架构：
+本项目采用前后端分离的架构，并包含专门的文档解析服务：
 
 - **前端**：Vue.js + Bootstrap + Vite构建，通过Nginx提供静态文件服务
 - **后端**：Go语言编写的RESTful API服务
 - **数据库**：PostgreSQL
 - **反向代理**：Nginx，用于静态文件服务和API代理
+- **文档解析服务**：Python实现的gRPC服务，专门处理PDF和DOCX文档解析
 
 ## 部署方式
 
@@ -53,6 +54,7 @@
    - 前端界面：http://your-server-ip
    - API健康检查：http://your-server-ip/health
    - 直接访问后端API：http://your-server-ip:8080/health
+   - Python解析服务：gRPC服务监听端口50051
 
 5. **停止服务**
    ```bash
@@ -134,6 +136,53 @@ sudo nginx -t
 sudo systemctl restart nginx
 ```
 
+#### 4. 部署Python解析服务（新增）
+
+Python解析服务专门处理PDF和DOCX文档的解析，通过gRPC与Go后端通信。
+
+```bash
+# 1. 进入Python解析服务目录
+cd python-parser-service
+
+# 2. 安装依赖
+python3 -m venv venv
+source venv/bin/activate  # Linux/Mac
+# 或 venv\\Scripts\\activate  # Windows
+pip install -r requirements.txt
+
+# 3. 生成gRPC代码
+./generate_grpc.sh
+
+# 4. 启动服务（推荐使用systemd管理）
+# 创建systemd服务文件
+sudo tee /etc/systemd/system/ai-doc-parser.service > /dev/null <<EOF
+[Unit]
+Description=AI文档库解析服务
+After=network.target
+
+[Service]
+Type=simple
+User=$USER
+WorkingDirectory=/path/to/your/project/python-parser-service
+Environment=PATH=/path/to/your/project/python-parser-service/venv/bin
+ExecStart=/path/to/your/project/python-parser-service/venv/bin/python -m service.server
+Restart=always
+RestartSec=10
+
+[Install]
+WantedBy=multi-user.target
+EOF
+
+# 5. 启动服务
+sudo systemctl daemon-reload
+sudo systemctl enable ai-doc-parser
+sudo systemctl start ai-doc-parser
+
+# 6. 检查服务状态
+sudo systemctl status ai-doc-parser
+sudo journalctl -u ai-doc-parser -f
+```
+
 ## 环境变量配置
 
 ### 后端环境变量
@@ -147,6 +196,7 @@ sudo systemctl restart nginx
 | DB_NAME | ai_doc_library | 数据库名称 |
 | SERVER_PORT | 8080 | 后端服务端口 |
 | STORAGE_DIR | ./storage | 文件存储目录 |
+| PARSER_SERVICE_ADDR | localhost:50051 | Python解析服务地址 |
 
 ### 前端配置
 
@@ -291,5 +341,151 @@ tar -xzf storage_backup.tar.gz
    - 定期更新系统包
 
 4. **监控**
-   - 设置资源使用监控
-   - 设置日志监控和告警
+    - 设置资源使用监控
+    - 设置日志监控和告警
+
+## Python解析服务部署
+
+### 架构说明
+
+Python解析服务作为独立的微服务运行，专门负责PDF和DOCX文档的解析。它通过gRPC协议与主Go应用程序通信，提供高性能的文档解析功能。
+
+### 主要功能
+
+- **PDF文档解析**：提取文本内容、元数据、页数、文件大小等信息
+- **DOCX文档解析**：提取文本内容、元数据、段落、表格、图片等信息
+- **gRPC服务接口**：提供标准化的远程调用接口
+- **健康检查**：支持服务健康状态监控
+
+### 部署要求
+
+- Python 3.8+
+- 网络访问权限（用于gRPC通信）
+- 系统内存至少512MB
+
+### 配置说明
+
+#### 服务配置
+
+- 默认监听端口：50051
+- 支持并发处理：默认10个工作线程
+- 超时设置：30秒
+
+#### Go服务配置
+
+在Go服务的`internal/service/parser_service.go`中配置gRPC客户端连接：
+
+```go
+// 连接到gRPC服务
+if err := service.grpcClient.Connect("localhost:50051"); err != nil {
+    // 错误处理和回退逻辑
+}
+```
+
+### 运维管理
+
+#### 服务管理
+
+```bash
+# 启动服务
+sudo systemctl start ai-doc-parser
+
+# 停止服务
+sudo systemctl stop ai-doc-parser
+
+# 重启服务
+sudo systemctl restart ai-doc-parser
+
+# 查看日志
+sudo journalctl -u ai-doc-parser -f
+```
+
+#### 健康检查
+
+可以通过以下方式检查Python解析服务状态：
+
+```bash
+# 检查端口监听
+netstat -tlnp | grep 50051
+
+# 检查服务状态
+sudo systemctl status ai-doc-parser
+
+# 检查进程
+ps aux | grep "service.server"
+```
+
+### 故障排除
+
+#### 常见问题
+
+1. **gRPC连接失败**
+   - 检查Python解析服务是否运行
+   - 验证网络连接和端口访问
+   - 检查防火墙设置
+
+2. **解析服务启动失败**
+   - 检查Python依赖是否安装正确
+   - 验证gRPC代码是否生成成功
+   - 查看详细错误日志
+
+3. **性能问题**
+   - 调整工作线程数量
+   - 检查系统资源使用情况
+   - 优化解析算法
+
+#### 日志分析
+
+Python解析服务的日志位置：
+- systemd日志：`journalctl -u ai-doc-parser`
+- 应用日志：在服务启动目录的server.log文件中
+
+### 扩展和定制
+
+#### 支持新文档格式
+
+可以通过实现新的解析器类来支持更多文档格式：
+
+```python
+# 示例：添加TXT文档支持
+class TXTParser:
+    def parse(self, file_path):
+        # 实现解析逻辑
+        pass
+```
+
+#### 性能优化
+
+- 实现文档缓存机制
+- 添加异步处理队列
+- 使用连接池管理gRPC连接
+
+#### 安全增强
+
+- 添加TLS加密gRPC通信
+- 实现文件类型和大小验证
+- 添加访问控制和认证机制
+
+### 备份和恢复
+
+#### 配置备份
+
+```bash
+# 备份Python解析服务配置
+tar -czf parser-config-backup.tar.gz python-parser-service/
+```
+
+#### 恢复步骤
+
+```bash
+# 恢复配置
+tar -xzf parser-config-backup.tar.gz
+
+# 重新安装依赖
+cd python-parser-service
+source venv/bin/activate
+pip install -r requirements.txt
+
+# 重启服务
+sudo systemctl restart ai-doc-parser
+```

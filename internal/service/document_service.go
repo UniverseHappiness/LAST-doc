@@ -8,6 +8,7 @@ import (
 	"mime/multipart"
 	"os"
 	"path/filepath"
+	"strings"
 	"time"
 
 	"github.com/UniverseHappiness/LAST-doc/internal/model"
@@ -327,6 +328,11 @@ func (s *documentService) processDocument(documentID string) {
 		return
 	}
 	log.Printf("DEBUG: 文档解析成功 - 文档ID: %s, 内容长度: %d\n", documentID, len(content))
+	// log.Printf("DEBUG: 文档数据 content: %s\n", content)
+	log.Printf("DEBUG: 文档数据 metadata: %v\n", metadata)
+
+	// 提取元数据
+	log.Printf("DEBUG: 开始提取元数据 - 文档ID: %s\n", documentID)
 
 	// 更新文档内容
 	log.Printf("DEBUG: 更新文档内容和状态 - 文档ID: %s\n", documentID)
@@ -368,9 +374,24 @@ func (s *documentService) processDocumentWithFile(documentID, version, filePath 
 	}
 	log.Printf("DEBUG: 成功获取文档信息 - 文档ID: %s, 名称: %s, 版本: %s, 状态: %s\n", documentID, document.Name, document.Version, document.Status)
 
+	// 根据文件扩展名确定文档类型，而不是使用原始文档的类型
+	fileType := s.detectFileTypeFromFile(filePath)
+	log.Printf("DEBUG: 检测到文件类型 - 文档ID: %s, 文件路径: %s, 检测类型: %s, 原始类型: %s\n", documentID, filePath, fileType, document.Type)
+
 	// 解析文档
-	log.Printf("DEBUG: 开始解析文档 - 文档ID: %s, 文件路径: %s, 类型: %s\n", documentID, filePath, document.Type)
-	content, metadata, err := s.parserService.ParseDocument(ctx, filePath, document.Type)
+	log.Printf("DEBUG: 开始解析文档 - 文档ID: %s, 文件路径: %s, 类型: %s\n", documentID, filePath, fileType)
+
+	// 添加文档类型特定的诊断日志
+	switch document.Type {
+	case model.DocumentTypePDF:
+		log.Printf("DEBUG: 检测到PDF文档，将使用PDF解析器 - 文档ID: %s\n", documentID)
+	case model.DocumentTypeDocx:
+		log.Printf("DEBUG: 检测到DOCX文档，将使用DOCX解析器 - 文档ID: %s\n", documentID)
+	default:
+		log.Printf("DEBUG: 检测到其他类型文档 - 文档ID: %s, 类型: %s\n", documentID, document.Type)
+	}
+
+	content, metadata, err := s.parserService.ParseDocument(ctx, filePath, fileType)
 	if err != nil {
 		log.Printf("DEBUG: 解析文档失败 - 文档ID: %s, 错误: %v\n", documentID, err)
 		// 更新文档状态为失败
@@ -380,7 +401,12 @@ func (s *documentService) processDocumentWithFile(documentID, version, filePath 
 		s.versionRepo.UpdateStatus(ctx, documentID, version, model.DocumentStatusFailed)
 		return
 	}
-	log.Printf("DEBUG: 文档解析成功 - 文档ID: %s, 内容长度: %d\n", documentID, len(content))
+	log.Printf("DEBUG: 文档解析成功 - 文档ID: %s, 内容长度: %d, 元数据键数量: %d\n", documentID, len(content), len(metadata))
+	log.Printf("DEBUG: PDF解析后数据存储位置:\n")
+	log.Printf("  - 原始PDF文件: %s\n", filePath)
+	log.Printf("  - 文档内容(数据库): documents表.content字段, 文档ID: %s\n", documentID)
+	log.Printf("  - 版本内容(数据库): document_versions表.content字段, 文档ID: %s, 版本: %s\n", documentID, version)
+	log.Printf("  - 元数据(数据库): document_metadata表.metadata字段, 文档ID: %s\n", documentID)
 
 	// 更新文档内容
 	log.Printf("DEBUG: 更新文档内容和状态 - 文档ID: %s\n", documentID)
@@ -420,6 +446,34 @@ func isValidDocumentType(docType model.DocumentType) bool {
 		return true
 	default:
 		return false
+	}
+}
+
+// detectFileTypeFromFile 根据文件扩展名检测文件类型
+func (s *documentService) detectFileTypeFromFile(filePath string) model.DocumentType {
+	ext := strings.ToLower(filepath.Ext(filePath))
+
+	switch ext {
+	case ".md", ".markdown":
+		return model.DocumentTypeMarkdown
+	case ".pdf":
+		return model.DocumentTypePDF
+	case ".docx", ".doc":
+		return model.DocumentTypeDocx
+	case ".json", ".yaml", ".yml":
+		// 简单判断是Swagger还是OpenAPI或普通JSON/YAML
+		if data, err := os.ReadFile(filePath); err == nil {
+			content := string(data)
+			if strings.Contains(content, "\"swagger\"") || strings.Contains(content, "\"openapi\"") {
+				return model.DocumentTypeSwagger
+			}
+			return model.DocumentTypeOpenAPI
+		}
+		return model.DocumentTypeOpenAPI
+	case ".html", ".htm":
+		return model.DocumentTypeJavaDoc
+	default:
+		return model.DocumentTypeMarkdown // 默认返回markdown类型
 	}
 }
 

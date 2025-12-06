@@ -88,3 +88,75 @@ storage/
 
 # Docker
 .dockerignore
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+# Virtual environments
+venv/
+env/
+ENV/
+.venv/
+.env/
+
+# Python testing
+.pytest_cache/
+.coverage
+htmlcov/
+.tox/
+.nox/
+coverage.xml
+*.cover
+.hypothesis/
+
+# gRPC generated files (Python)
+python-parser-service/*_pb2.py
+python-parser-service/*_pb2_grpc.py
+
+# Go specific
+# Compiled binaries
+/main
+/bin/
+cmd/main
+
+# Go module cache
+go.sum
+
+# Test artifacts
+coverage.html
+
+# Temporary test files
+test_fix.sh
+test.md
+TEST_AUTO_GENERATION.md
+task.md
+
+# Backup files
+*.bak
+*.backup
+*.tmp
+
+# Editor temporary files
+*~
+.swp
+.swo

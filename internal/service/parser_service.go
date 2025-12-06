@@ -10,6 +10,14 @@ import (
 	"github.com/UniverseHappiness/LAST-doc/internal/model"
 )
 
+// min 返回两个整数中的较小值
+func min(a, b int) int {
+	if a < b {
+		return a
+	}
+	return b
+}
+
 // DocumentParserService 解析服务接口
 type DocumentParserService interface {
 	ParseDocument(ctx context.Context, filePath string, docType model.DocumentType) (string, map[string]interface{}, error)
@@ -17,22 +25,32 @@ type DocumentParserService interface {
 
 // parserService 解析服务实现
 type parserService struct {
-	parsers map[model.DocumentType]DocumentParser
+	parsers    map[model.DocumentType]DocumentParser
+	grpcClient *GRPCClient
 }
 
 // NewParserService 创建解析服务实例
 func NewParserService() DocumentParserService {
 	service := &parserService{
-		parsers: make(map[model.DocumentType]DocumentParser),
+		parsers:    make(map[model.DocumentType]DocumentParser),
+		grpcClient: NewGRPCClient(),
 	}
 
 	// 注册各种文档类型的解析器
 	service.RegisterParser(model.DocumentTypeMarkdown, NewMarkdownParser())
-	service.RegisterParser(model.DocumentTypePDF, NewPDFParser())
-	service.RegisterParser(model.DocumentTypeDocx, NewDocxParser())
+	service.RegisterParser(model.DocumentTypePDF, NewPDFGRPCParser(service.grpcClient))
+	service.RegisterParser(model.DocumentTypeDocx, NewDocxGRPCParser(service.grpcClient))
 	service.RegisterParser(model.DocumentTypeSwagger, NewSwaggerParser())
 	service.RegisterParser(model.DocumentTypeOpenAPI, NewOpenAPIParser())
 	service.RegisterParser(model.DocumentTypeJavaDoc, NewJavaDocParser())
+
+	// 连接到gRPC服务
+	if err := service.grpcClient.Connect("localhost:50051"); err != nil {
+		fmt.Printf("警告：连接gRPC服务失败，将使用本地解析器: %v\n", err)
+		// 如果连接失败，回退到本地解析器
+		service.RegisterParser(model.DocumentTypePDF, NewPDFParser())
+		service.RegisterParser(model.DocumentTypeDocx, NewDocxParser())
+	}
 
 	return service
 }
@@ -123,12 +141,20 @@ func NewPDFParser() DocumentParser {
 
 // Parse 解析PDF文档
 func (p *pdfParser) Parse(ctx context.Context, filePath string) (string, map[string]interface{}, error) {
+	// 添加诊断日志
+	fmt.Printf("[DEBUG] PDF解析开始 - 文件路径: %s\n", filePath)
+
 	// 这里应该使用PDF解析库，如github.com/ledongthuc/pdf
 	// 为了简化，这里只返回模拟数据
 	data, err := os.ReadFile(filePath)
 	if err != nil {
+		fmt.Printf("[DEBUG] PDF文件读取失败 - 路径: %s, 错误: %v\n", filePath, err)
 		return "", nil, fmt.Errorf("failed to read PDF file: %v", err)
 	}
+
+	// PDF文件是二进制格式，绝对不要直接输出内容到终端
+	// 只输出文件大小信息，避免二进制内容导致终端乱码
+	fmt.Printf("[DEBUG] PDF文件读取成功 - 路径: %s, 大小: %d 字节\n", filePath, len(data))
 
 	// 模拟提取文本内容
 	content := fmt.Sprintf("PDF文档内容（大小：%d字节）", len(data))
@@ -138,6 +164,7 @@ func (p *pdfParser) Parse(ctx context.Context, filePath string) (string, map[str
 		"pages":     10, // 模拟页数
 	}
 
+	fmt.Printf("[DEBUG] PDF解析完成 - 路径: %s, 内容长度: %d\n", filePath, len(content))
 	return content, metadata, nil
 }
 
@@ -156,12 +183,20 @@ func NewDocxParser() DocumentParser {
 
 // Parse 解析DOCX文档
 func (p *docxParser) Parse(ctx context.Context, filePath string) (string, map[string]interface{}, error) {
+	// 添加诊断日志
+	fmt.Printf("[DEBUG] DOCX解析开始 - 文件路径: %s\n", filePath)
+
 	// 这里应该使用DOCX解析库，如github.com/unidoc/unioffice
 	// 为了简化，这里只返回模拟数据
 	data, err := os.ReadFile(filePath)
 	if err != nil {
+		fmt.Printf("[DEBUG] DOCX文件读取失败 - 路径: %s, 错误: %v\n", filePath, err)
 		return "", nil, fmt.Errorf("failed to read DOCX file: %v", err)
 	}
+
+	// DOCX文件是二进制格式，绝对不要直接输出内容到终端
+	// 只输出文件大小信息，避免二进制内容导致终端乱码
+	fmt.Printf("[DEBUG] DOCX文件读取成功 - 路径: %s, 大小: %d 字节\n", filePath, len(data))
 
 	// 模拟提取文本内容
 	content := fmt.Sprintf("DOCX文档内容（大小：%d字节）", len(data))
@@ -171,6 +206,7 @@ func (p *docxParser) Parse(ctx context.Context, filePath string) (string, map[st
 		"pages":     5, // 模拟页数
 	}
 
+	fmt.Printf("[DEBUG] DOCX解析完成 - 路径: %s, 内容长度: %d\n", filePath, len(content))
 	return content, metadata, nil
 }
 
@@ -312,4 +348,70 @@ func GetParserByExtension(filePath string) DocumentParser {
 	default:
 		return nil
 	}
+}
+
+// pdfGRPCParser PDF gRPC解析器
+type pdfGRPCParser struct {
+	grpcClient *GRPCClient
+}
+
+// NewPDFGRPCParser 创建PDF gRPC解析器
+func NewPDFGRPCParser(grpcClient *GRPCClient) DocumentParser {
+	return &pdfGRPCParser{
+		grpcClient: grpcClient,
+	}
+}
+
+// Parse 通过gRPC解析PDF文档
+func (p *pdfGRPCParser) Parse(ctx context.Context, filePath string) (string, map[string]interface{}, error) {
+	fmt.Printf("[DEBUG] 通过gRPC解析PDF文档 - 文件路径: %s\n", filePath)
+
+	content, metadata, err := p.grpcClient.ParsePDFWithGRPC(filePath)
+	if err != nil {
+		fmt.Printf("[DEBUG] gRPC PDF解析失败 - 路径: %s, 错误: %v\n", filePath, err)
+		// 如果gRPC解析失败，回退到本地解析
+		localParser := NewPDFParser()
+		return localParser.Parse(ctx, filePath)
+	}
+
+	fmt.Printf("[DEBUG] gRPC PDF解析成功 - 路径: %s, 内容长度: %d\n", filePath, len(content))
+	return content, metadata, nil
+}
+
+// SupportedExtensions 返回支持的文件扩展名
+func (p *pdfGRPCParser) SupportedExtensions() []string {
+	return []string{".pdf"}
+}
+
+// docxGRPCParser DOCX gRPC解析器
+type docxGRPCParser struct {
+	grpcClient *GRPCClient
+}
+
+// NewDocxGRPCParser 创建DOCX gRPC解析器
+func NewDocxGRPCParser(grpcClient *GRPCClient) DocumentParser {
+	return &docxGRPCParser{
+		grpcClient: grpcClient,
+	}
+}
+
+// Parse 通过gRPC解析DOCX文档
+func (p *docxGRPCParser) Parse(ctx context.Context, filePath string) (string, map[string]interface{}, error) {
+	fmt.Printf("[DEBUG] 通过gRPC解析DOCX文档 - 文件路径: %s\n", filePath)
+
+	content, metadata, err := p.grpcClient.ParseDOCXWithGRPC(filePath)
+	if err != nil {
+		fmt.Printf("[DEBUG] gRPC DOCX解析失败 - 路径: %s, 错误: %v\n", filePath, err)
+		// 如果gRPC解析失败，回退到本地解析
+		localParser := NewDocxParser()
+		return localParser.Parse(ctx, filePath)
+	}
+
+	fmt.Printf("[DEBUG] gRPC DOCX解析成功 - 路径: %s, 内容长度: %d\n", filePath, len(content))
+	return content, metadata, nil
+}
+
+// SupportedExtensions 返回支持的文件扩展名
+func (p *docxGRPCParser) SupportedExtensions() []string {
+	return []string{".docx", ".doc"}
 }

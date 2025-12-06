@@ -38,6 +38,7 @@ func (h *DocumentHandler) UploadDocument(c *gin.Context) {
 	}
 
 	docType := c.PostForm("type")
+	log.Printf("DEBUG: 后端接收到的文档类型 - docType: '%s'\n", docType)
 	if docType == "" {
 		c.JSON(http.StatusBadRequest, gin.H{
 			"code":    400,
@@ -79,17 +80,21 @@ func (h *DocumentHandler) UploadDocument(c *gin.Context) {
 	log.Printf("DEBUG: 前端传递的标签数据 - tagsStr: '%s', 处理后的 tags: %+v (类型: %T)\n", tagsStr, tags, tags)
 
 	// 获取上传的文件
+	log.Printf("DEBUG: 后端开始获取上传文件")
 	file, err := c.FormFile("file")
 	if err != nil {
+		log.Printf("DEBUG: 后端获取上传文件失败: %v", err)
 		c.JSON(http.StatusBadRequest, gin.H{
 			"code":    400,
 			"message": "获取上传文件失败: " + err.Error(),
 		})
 		return
 	}
+	log.Printf("DEBUG: 后端成功获取上传文件 - 文件名: %s, 文件大小: %d, MIME类型: %s", file.Filename, file.Size, file.Header.Get("Content-Type"))
 
 	// 验证文件类型
 	if !isValidFileType(file.Filename, model.DocumentType(docType)) {
+		log.Printf("DEBUG: 文件类型不匹配 - 文件名: %s, 选择类型: %s\n", file.Filename, docType)
 		c.JSON(http.StatusBadRequest, gin.H{
 			"code":    400,
 			"message": "文件类型与文档类型不匹配",

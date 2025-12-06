@@ -57,10 +57,21 @@ export function useDocumentService(state) {
 
   // 上传文档
   const uploadDocument = async () => {
+    console.log('DEBUG: documentService - uploadDocument 函数被调用')
+    console.log('DEBUG: documentService - uploadForm.file 当前值:', uploadForm.file)
+    
     if (!uploadForm.file) {
+      console.error('DEBUG: documentService - 没有选择文件，uploadForm.file 为空')
       alert('请选择文件')
       return
     }
+    
+    console.log('DEBUG: documentService - 文件对象详细信息:', {
+      name: uploadForm.file.name,
+      size: uploadForm.file.size,
+      type: uploadForm.file.type,
+      lastModified: uploadForm.file.lastModified
+    })
     
     isUploading.value = true
     const formData = new FormData()
@@ -73,13 +84,24 @@ export function useDocumentService(state) {
     formData.append('tags', uploadForm.tags)
     
     try {
-      console.log('DEBUG: 前端开始上传文档 - 版本号:', uploadForm.version)
-      console.log('DEBUG: 前端上传文档数据:', {
+      console.log('DEBUG: documentService - 前端开始上传文档 - 版本号:', uploadForm.version)
+      console.log('DEBUG: documentService - 前端上传文档数据:', {
         name: uploadForm.name,
         type: uploadForm.type,
         version: uploadForm.version,
         library: uploadForm.library
       })
+      
+      // 添加表单数据的调试输出
+      console.log('DEBUG: documentService - FormData中的type字段值:', uploadForm.type)
+      console.log('DEBUG: documentService - FormData内容检查:')
+      for (let [key, value] of formData.entries()) {
+        if (key === 'file') {
+          console.log(`  ${key}: [File object - name: ${value.name}, size: ${value.size}]`)
+        } else {
+          console.log(`  ${key}: ${value}`)
+        }
+      }
       
       const response = await axios.post(`${apiBase}/documents`, formData, {
         headers: {
@@ -87,14 +109,14 @@ export function useDocumentService(state) {
         }
       })
       
-      console.log('DEBUG: 前端上传文档成功:', response.data)
+      console.log('DEBUG: documentService - 前端上传文档成功:', response.data)
       alert('上传成功')
       resetUploadForm()
       currentView.value = 'list'
       await fetchDocuments()
     } catch (error) {
-      console.error('DEBUG: 前端上传文档失败:', error)
-      console.error('DEBUG: 前端上传文档失败详情:', {
+      console.error('DEBUG: documentService - 前端上传文档失败:', error)
+      console.error('DEBUG: documentService - 前端上传文档失败详情:', {
         response: error.response?.data,
         status: error.response?.status,
         message: error.message

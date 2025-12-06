@@ -1,0 +1,49 @@
+syntax = "proto3";
+
+package document_parser;
+
+option go_package = "/pb";
+
+// 文档解析服务定义
+service DocumentParserService {
+  // 解析PDF文档
+  rpc ParsePDF(ParsePDFRequest) returns (ParseDocumentResponse);
+  
+  // 解析DOCX文档
+  rpc ParseDOCX(ParseDOCXRequest) returns (ParseDocumentResponse);
+  
+  // 健康检查
+  rpc HealthCheck(HealthCheckRequest) returns (HealthCheckResponse);
+}
+
+// PDF解析请求
+message ParsePDFRequest {
+  string file_path = 1;
+  bytes file_data = 2; // 可选：可以直接传递文件数据
+}
+
+// DOCX解析请求
+message ParseDOCXRequest {
+  string file_path = 1;
+  bytes file_data = 2; // 可选：可以直接传递文件数据
+}
+
+// 文档解析响应
+message ParseDocumentResponse {
+  bool success = 1;
+  string content = 2;
+  map<string, string> metadata = 3;
+  string error_message = 4;
+}
+
+// 健康检查请求
+message HealthCheckRequest {
+  string service = 1;
+}
+
+// 健康检查响应
+message HealthCheckResponse {
+  bool healthy = 1;
+  string message = 2;
+  string version = 3;
+}

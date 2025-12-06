@@ -4,7 +4,7 @@
     
     <div class="card">
       <div class="card-body">
-        <form @submit.prevent="handleSubmit">
+        <form @submit.prevent="handleSubmit" id="uploadForm">
           <div class="mb-3">
             <label for="docName" class="form-label">文档名称 <span class="text-danger">*</span></label>
             <input type="text" 
@@ -76,11 +76,10 @@
                  @dragover.prevent="handleDragOver" 
                  @dragleave.prevent="handleDragLeave" 
                  @drop.prevent="handleDropFile">
-              <input type="file" 
-                     ref="fileInput" 
-                     @change="handleFileSelected" 
-                     style="display: none;" 
-                     required>
+              <input type="file"
+                     ref="fileInput"
+                     @change="handleFileSelected"
+                     style="display: none;">
               <i class="bi bi-cloud-upload" style="font-size: 2rem;"></i>
               <p class="mt-2">点击或拖拽文件到此处上传</p>
               <p class="text-muted small">支持多种格式: Markdown, PDF, DOCX, Swagger, OpenAPI, JavaDoc</p>
@@ -124,6 +123,18 @@ export default {
     
     // 处理表单提交
     const handleSubmit = () => {
+      console.log('DEBUG: UploadView - handleSubmit 函数被调用')
+      // 检查是否有文件（无论是通过拖拽还是点击选择）
+      const hasFile = props.uploadForm.file !== null
+      console.log('DEBUG: UploadView - 检查是否有文件:', hasFile)
+      
+      if (!hasFile) {
+        console.error('DEBUG: UploadView - 没有选择文件，阻止表单提交')
+        alert('请选择文件')
+        return
+      }
+      
+      console.log('DEBUG: UploadView - 文件已选择，允许表单提交')
       emit('upload')
     }
     
@@ -142,6 +153,15 @@ export default {
     }
     
     const handleDropFile = (event) => {
+      console.log('DEBUG: UploadView - 拖拽文件事件触发', event)
+      console.log('DEBUG: UploadView - 拖拽的文件列表:', event.dataTransfer.files)
+      if (event.dataTransfer.files && event.dataTransfer.files.length > 0) {
+        console.log('DEBUG: UploadView - 第一个文件信息:', {
+          name: event.dataTransfer.files[0].name,
+          size: event.dataTransfer.files[0].size,
+          type: event.dataTransfer.files[0].type
+        })
+      }
       emit('drop-file', event)
     }
     

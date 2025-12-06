@@ -414,10 +414,21 @@ export default {
     }
     
     const dropFile = (event) => {
+      console.log('DEBUG: App.vue - dropFile 函数被调用', event)
       event.target.classList.remove('drag-over')
       const file = event.dataTransfer.files[0]
+      console.log('DEBUG: App.vue - 从拖拽事件中获取的文件:', file)
       if (file) {
+        console.log('DEBUG: App.vue - 文件信息:', {
+          name: file.name,
+          size: file.size,
+          type: file.type,
+          lastModified: file.lastModified
+        })
         uploadForm.file = file
+        console.log('DEBUG: App.vue - 文件已设置到 uploadForm.file，当前值:', uploadForm.file)
+      } else {
+        console.error('DEBUG: App.vue - 拖拽事件中没有找到文件')
       }
     }
     
