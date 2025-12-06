@@ -1,0 +1,26 @@
+package {{.PackageName}}
+
+import (
+	"testing"
+	{{if .Imports}}{{.Imports}}{{end}}
+)
+
+func Test{{.StructName}}(t *testing.T) {
+	// TODO: 添加测试逻辑
+	
+	// 示例测试结构：
+	// 1. 设置测试数据
+	// 2. 调用被测试函数
+	// 3. 验证结果
+	// 4. 清理测试数据
+}
+
+func Test{{.StructName}}_{{.MethodName}}(t *testing.T) {
+	// TODO: 添加测试逻辑
+	
+	// 示例测试结构：
+	// 1. 设置测试数据
+	// 2. 调用被测试函数
+	// 3. 验证结果
+	// 4. 清理测试数据
+}

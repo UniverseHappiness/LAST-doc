@@ -1,9 +1,13 @@
 package service
 
 import (
+	"context"
+	"mime/multipart"
+	"reflect"
 	"testing"
 
 	"github.com/UniverseHappiness/LAST-doc/internal/model"
+	"github.com/UniverseHappiness/LAST-doc/internal/repository"
 )
 
 // TestDocumentService 测试文档服务的简单测试
@@ -190,5 +194,609 @@ func TestJavaDocParser(t *testing.T) {
 		if !validExtensions[ext] {
 			t.Errorf("JavaDoc解析器不支持扩展名: %s", ext)
 		}
+	}
+}
+
+func TestNewDocumentService(t *testing.T) {
+	type args struct {
+		documentRepo   repository.DocumentRepository
+		versionRepo    repository.DocumentVersionRepository
+		metadataRepo   repository.DocumentMetadataRepository
+		storageService StorageService
+		parserService  DocumentParserService
+		baseStorageDir string
+	}
+	tests := []struct {
+		name string
+		args args
+		want DocumentService
+	}{
+		// TODO: Add test cases.
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := NewDocumentService(tt.args.documentRepo, tt.args.versionRepo, tt.args.metadataRepo, tt.args.storageService, tt.args.parserService, tt.args.baseStorageDir); !reflect.DeepEqual(got, tt.want) {
+				t.Errorf("NewDocumentService() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
+func Test_documentService_UploadDocument(t *testing.T) {
+	type fields struct {
+		documentRepo   repository.DocumentRepository
+		versionRepo    repository.DocumentVersionRepository
+		metadataRepo   repository.DocumentMetadataRepository
+		storageService StorageService
+		parserService  DocumentParserService
+		baseStorageDir string
+	}
+	type args struct {
+		ctx         context.Context
+		file        *multipart.FileHeader
+		name        string
+		docType     string
+		version     string
+		library     string
+		description string
+		tags        []string
+	}
+	tests := []struct {
+		name    string
+		fields  fields
+		args    args
+		want    *model.Document
+		wantErr bool
+	}{
+		// TODO: Add test cases.
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			s := &documentService{
+				documentRepo:   tt.fields.documentRepo,
+				versionRepo:    tt.fields.versionRepo,
+				metadataRepo:   tt.fields.metadataRepo,
+				storageService: tt.fields.storageService,
+				parserService:  tt.fields.parserService,
+				baseStorageDir: tt.fields.baseStorageDir,
+			}
+			got, err := s.UploadDocument(tt.args.ctx, tt.args.file, tt.args.name, tt.args.docType, tt.args.version, tt.args.library, tt.args.description, tt.args.tags)
+			if (err != nil) != tt.wantErr {
+				t.Fatalf("documentService.UploadDocument() error = %v, wantErr %v", err, tt.wantErr)
+			}
+			if tt.wantErr {
+				return
+			}
+			if !reflect.DeepEqual(got, tt.want) {
+				t.Errorf("documentService.UploadDocument() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
+func Test_documentService_GetDocument(t *testing.T) {
+	type fields struct {
+		documentRepo   repository.DocumentRepository
+		versionRepo    repository.DocumentVersionRepository
+		metadataRepo   repository.DocumentMetadataRepository
+		storageService StorageService
+		parserService  DocumentParserService
+		baseStorageDir string
+	}
+	type args struct {
+		ctx context.Context
+		id  string
+	}
+	tests := []struct {
+		name    string
+		fields  fields
+		args    args
+		want    *model.Document
+		wantErr bool
+	}{
+		// TODO: Add test cases.
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			s := &documentService{
+				documentRepo:   tt.fields.documentRepo,
+				versionRepo:    tt.fields.versionRepo,
+				metadataRepo:   tt.fields.metadataRepo,
+				storageService: tt.fields.storageService,
+				parserService:  tt.fields.parserService,
+				baseStorageDir: tt.fields.baseStorageDir,
+			}
+			got, err := s.GetDocument(tt.args.ctx, tt.args.id)
+			if (err != nil) != tt.wantErr {
+				t.Fatalf("documentService.GetDocument() error = %v, wantErr %v", err, tt.wantErr)
+			}
+			if tt.wantErr {
+				return
+			}
+			if !reflect.DeepEqual(got, tt.want) {
+				t.Errorf("documentService.GetDocument() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
+func Test_documentService_GetDocuments(t *testing.T) {
+	type fields struct {
+		documentRepo   repository.DocumentRepository
+		versionRepo    repository.DocumentVersionRepository
+		metadataRepo   repository.DocumentMetadataRepository
+		storageService StorageService
+		parserService  DocumentParserService
+		baseStorageDir string
+	}
+	type args struct {
+		ctx     context.Context
+		page    int
+		size    int
+		filters map[string]interface{}
+	}
+	tests := []struct {
+		name    string
+		fields  fields
+		args    args
+		want    []*model.Document
+		want1   int64
+		wantErr bool
+	}{
+		// TODO: Add test cases.
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			s := &documentService{
+				documentRepo:   tt.fields.documentRepo,
+				versionRepo:    tt.fields.versionRepo,
+				metadataRepo:   tt.fields.metadataRepo,
+				storageService: tt.fields.storageService,
+				parserService:  tt.fields.parserService,
+				baseStorageDir: tt.fields.baseStorageDir,
+			}
+			got, got1, err := s.GetDocuments(tt.args.ctx, tt.args.page, tt.args.size, tt.args.filters)
+			if (err != nil) != tt.wantErr {
+				t.Fatalf("documentService.GetDocuments() error = %v, wantErr %v", err, tt.wantErr)
+			}
+			if tt.wantErr {
+				return
+			}
+			if !reflect.DeepEqual(got, tt.want) {
+				t.Errorf("documentService.GetDocuments() got = %v, want %v", got, tt.want)
+			}
+			if got1 != tt.want1 {
+				t.Errorf("documentService.GetDocuments() got1 = %v, want %v", got1, tt.want1)
+			}
+		})
+	}
+}
+
+func Test_documentService_GetDocumentVersions(t *testing.T) {
+	type fields struct {
+		documentRepo   repository.DocumentRepository
+		versionRepo    repository.DocumentVersionRepository
+		metadataRepo   repository.DocumentMetadataRepository
+		storageService StorageService
+		parserService  DocumentParserService
+		baseStorageDir string
+	}
+	type args struct {
+		ctx        context.Context
+		documentID string
+	}
+	tests := []struct {
+		name    string
+		fields  fields
+		args    args
+		want    []*model.DocumentVersion
+		wantErr bool
+	}{
+		// TODO: Add test cases.
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			s := &documentService{
+				documentRepo:   tt.fields.documentRepo,
+				versionRepo:    tt.fields.versionRepo,
+				metadataRepo:   tt.fields.metadataRepo,
+				storageService: tt.fields.storageService,
+				parserService:  tt.fields.parserService,
+				baseStorageDir: tt.fields.baseStorageDir,
+			}
+			got, err := s.GetDocumentVersions(tt.args.ctx, tt.args.documentID)
+			if (err != nil) != tt.wantErr {
+				t.Fatalf("documentService.GetDocumentVersions() error = %v, wantErr %v", err, tt.wantErr)
+			}
+			if tt.wantErr {
+				return
+			}
+			if !reflect.DeepEqual(got, tt.want) {
+				t.Errorf("documentService.GetDocumentVersions() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
+func Test_documentService_GetDocumentByVersion(t *testing.T) {
+	type fields struct {
+		documentRepo   repository.DocumentRepository
+		versionRepo    repository.DocumentVersionRepository
+		metadataRepo   repository.DocumentMetadataRepository
+		storageService StorageService
+		parserService  DocumentParserService
+		baseStorageDir string
+	}
+	type args struct {
+		ctx        context.Context
+		documentID string
+		version    string
+	}
+	tests := []struct {
+		name    string
+		fields  fields
+		args    args
+		want    *model.DocumentVersion
+		wantErr bool
+	}{
+		// TODO: Add test cases.
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			s := &documentService{
+				documentRepo:   tt.fields.documentRepo,
+				versionRepo:    tt.fields.versionRepo,
+				metadataRepo:   tt.fields.metadataRepo,
+				storageService: tt.fields.storageService,
+				parserService:  tt.fields.parserService,
+				baseStorageDir: tt.fields.baseStorageDir,
+			}
+			got, err := s.GetDocumentByVersion(tt.args.ctx, tt.args.documentID, tt.args.version)
+			if (err != nil) != tt.wantErr {
+				t.Fatalf("documentService.GetDocumentByVersion() error = %v, wantErr %v", err, tt.wantErr)
+			}
+			if tt.wantErr {
+				return
+			}
+			if !reflect.DeepEqual(got, tt.want) {
+				t.Errorf("documentService.GetDocumentByVersion() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
+func Test_documentService_DeleteDocument(t *testing.T) {
+	type fields struct {
+		documentRepo   repository.DocumentRepository
+		versionRepo    repository.DocumentVersionRepository
+		metadataRepo   repository.DocumentMetadataRepository
+		storageService StorageService
+		parserService  DocumentParserService
+		baseStorageDir string
+	}
+	type args struct {
+		ctx context.Context
+		id  string
+	}
+	tests := []struct {
+		name    string
+		fields  fields
+		args    args
+		wantErr bool
+	}{
+		// TODO: Add test cases.
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			s := &documentService{
+				documentRepo:   tt.fields.documentRepo,
+				versionRepo:    tt.fields.versionRepo,
+				metadataRepo:   tt.fields.metadataRepo,
+				storageService: tt.fields.storageService,
+				parserService:  tt.fields.parserService,
+				baseStorageDir: tt.fields.baseStorageDir,
+			}
+			if err := s.DeleteDocument(tt.args.ctx, tt.args.id); (err != nil) != tt.wantErr {
+				t.Errorf("documentService.DeleteDocument() error = %v, wantErr %v", err, tt.wantErr)
+			}
+		})
+	}
+}
+
+func Test_documentService_UpdateDocument(t *testing.T) {
+	type fields struct {
+		documentRepo   repository.DocumentRepository
+		versionRepo    repository.DocumentVersionRepository
+		metadataRepo   repository.DocumentMetadataRepository
+		storageService StorageService
+		parserService  DocumentParserService
+		baseStorageDir string
+	}
+	type args struct {
+		ctx     context.Context
+		id      string
+		updates map[string]interface{}
+	}
+	tests := []struct {
+		name    string
+		fields  fields
+		args    args
+		wantErr bool
+	}{
+		// TODO: Add test cases.
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			s := &documentService{
+				documentRepo:   tt.fields.documentRepo,
+				versionRepo:    tt.fields.versionRepo,
+				metadataRepo:   tt.fields.metadataRepo,
+				storageService: tt.fields.storageService,
+				parserService:  tt.fields.parserService,
+				baseStorageDir: tt.fields.baseStorageDir,
+			}
+			if err := s.UpdateDocument(tt.args.ctx, tt.args.id, tt.args.updates); (err != nil) != tt.wantErr {
+				t.Errorf("documentService.UpdateDocument() error = %v, wantErr %v", err, tt.wantErr)
+			}
+		})
+	}
+}
+
+func Test_documentService_DeleteDocumentVersion(t *testing.T) {
+	type fields struct {
+		documentRepo   repository.DocumentRepository
+		versionRepo    repository.DocumentVersionRepository
+		metadataRepo   repository.DocumentMetadataRepository
+		storageService StorageService
+		parserService  DocumentParserService
+		baseStorageDir string
+	}
+	type args struct {
+		ctx        context.Context
+		documentID string
+		version    string
+	}
+	tests := []struct {
+		name    string
+		fields  fields
+		args    args
+		wantErr bool
+	}{
+		// TODO: Add test cases.
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			s := &documentService{
+				documentRepo:   tt.fields.documentRepo,
+				versionRepo:    tt.fields.versionRepo,
+				metadataRepo:   tt.fields.metadataRepo,
+				storageService: tt.fields.storageService,
+				parserService:  tt.fields.parserService,
+				baseStorageDir: tt.fields.baseStorageDir,
+			}
+			if err := s.DeleteDocumentVersion(tt.args.ctx, tt.args.documentID, tt.args.version); (err != nil) != tt.wantErr {
+				t.Errorf("documentService.DeleteDocumentVersion() error = %v, wantErr %v", err, tt.wantErr)
+			}
+		})
+	}
+}
+
+func Test_documentService_GetDocumentMetadata(t *testing.T) {
+	type fields struct {
+		documentRepo   repository.DocumentRepository
+		versionRepo    repository.DocumentVersionRepository
+		metadataRepo   repository.DocumentMetadataRepository
+		storageService StorageService
+		parserService  DocumentParserService
+		baseStorageDir string
+	}
+	type args struct {
+		ctx        context.Context
+		documentID string
+	}
+	tests := []struct {
+		name    string
+		fields  fields
+		args    args
+		want    map[string]interface{}
+		wantErr bool
+	}{
+		// TODO: Add test cases.
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			s := &documentService{
+				documentRepo:   tt.fields.documentRepo,
+				versionRepo:    tt.fields.versionRepo,
+				metadataRepo:   tt.fields.metadataRepo,
+				storageService: tt.fields.storageService,
+				parserService:  tt.fields.parserService,
+				baseStorageDir: tt.fields.baseStorageDir,
+			}
+			got, err := s.GetDocumentMetadata(tt.args.ctx, tt.args.documentID)
+			if (err != nil) != tt.wantErr {
+				t.Fatalf("documentService.GetDocumentMetadata() error = %v, wantErr %v", err, tt.wantErr)
+			}
+			if tt.wantErr {
+				return
+			}
+			if !reflect.DeepEqual(got, tt.want) {
+				t.Errorf("documentService.GetDocumentMetadata() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
+func Test_documentService_GetDocumentVersionCount(t *testing.T) {
+	type fields struct {
+		documentRepo   repository.DocumentRepository
+		versionRepo    repository.DocumentVersionRepository
+		metadataRepo   repository.DocumentMetadataRepository
+		storageService StorageService
+		parserService  DocumentParserService
+		baseStorageDir string
+	}
+	type args struct {
+		ctx        context.Context
+		documentID string
+	}
+	tests := []struct {
+		name    string
+		fields  fields
+		args    args
+		want    int64
+		wantErr bool
+	}{
+		// TODO: Add test cases.
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			s := &documentService{
+				documentRepo:   tt.fields.documentRepo,
+				versionRepo:    tt.fields.versionRepo,
+				metadataRepo:   tt.fields.metadataRepo,
+				storageService: tt.fields.storageService,
+				parserService:  tt.fields.parserService,
+				baseStorageDir: tt.fields.baseStorageDir,
+			}
+			got, err := s.GetDocumentVersionCount(tt.args.ctx, tt.args.documentID)
+			if (err != nil) != tt.wantErr {
+				t.Fatalf("documentService.GetDocumentVersionCount() error = %v, wantErr %v", err, tt.wantErr)
+			}
+			if tt.wantErr {
+				return
+			}
+			if got != tt.want {
+				t.Errorf("documentService.GetDocumentVersionCount() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
+func Test_documentService_saveFile(t *testing.T) {
+	type fields struct {
+		documentRepo   repository.DocumentRepository
+		versionRepo    repository.DocumentVersionRepository
+		metadataRepo   repository.DocumentMetadataRepository
+		storageService StorageService
+		parserService  DocumentParserService
+		baseStorageDir string
+	}
+	type args struct {
+		file     *multipart.FileHeader
+		filePath string
+	}
+	tests := []struct {
+		name    string
+		fields  fields
+		args    args
+		wantErr bool
+	}{
+		// TODO: Add test cases.
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			s := &documentService{
+				documentRepo:   tt.fields.documentRepo,
+				versionRepo:    tt.fields.versionRepo,
+				metadataRepo:   tt.fields.metadataRepo,
+				storageService: tt.fields.storageService,
+				parserService:  tt.fields.parserService,
+				baseStorageDir: tt.fields.baseStorageDir,
+			}
+			if err := s.saveFile(tt.args.file, tt.args.filePath); (err != nil) != tt.wantErr {
+				t.Errorf("documentService.saveFile() error = %v, wantErr %v", err, tt.wantErr)
+			}
+		})
+	}
+}
+
+func Test_documentService_processDocument(t *testing.T) {
+	type fields struct {
+		documentRepo   repository.DocumentRepository
+		versionRepo    repository.DocumentVersionRepository
+		metadataRepo   repository.DocumentMetadataRepository
+		storageService StorageService
+		parserService  DocumentParserService
+		baseStorageDir string
+	}
+	type args struct {
+		documentID string
+	}
+	tests := []struct {
+		name   string
+		fields fields
+		args   args
+	}{
+		// TODO: Add test cases.
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			s := &documentService{
+				documentRepo:   tt.fields.documentRepo,
+				versionRepo:    tt.fields.versionRepo,
+				metadataRepo:   tt.fields.metadataRepo,
+				storageService: tt.fields.storageService,
+				parserService:  tt.fields.parserService,
+				baseStorageDir: tt.fields.baseStorageDir,
+			}
+			s.processDocument(tt.args.documentID)
+		})
+	}
+}
+
+func Test_documentService_processDocumentWithFile(t *testing.T) {
+	type fields struct {
+		documentRepo   repository.DocumentRepository
+		versionRepo    repository.DocumentVersionRepository
+		metadataRepo   repository.DocumentMetadataRepository
+		storageService StorageService
+		parserService  DocumentParserService
+		baseStorageDir string
+	}
+	type args struct {
+		documentID string
+		version    string
+		filePath   string
+	}
+	tests := []struct {
+		name   string
+		fields fields
+		args   args
+	}{
+		// TODO: Add test cases.
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			s := &documentService{
+				documentRepo:   tt.fields.documentRepo,
+				versionRepo:    tt.fields.versionRepo,
+				metadataRepo:   tt.fields.metadataRepo,
+				storageService: tt.fields.storageService,
+				parserService:  tt.fields.parserService,
+				baseStorageDir: tt.fields.baseStorageDir,
+			}
+			s.processDocumentWithFile(tt.args.documentID, tt.args.version, tt.args.filePath)
+		})
+	}
+}
+
+func Test_isValidDocumentType(t *testing.T) {
+	type args struct {
+		docType model.DocumentType
+	}
+	tests := []struct {
+		name string
+		args args
+		want bool
+	}{
+		// TODO: Add test cases.
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := isValidDocumentType(tt.args.docType); got != tt.want {
+				t.Errorf("isValidDocumentType() = %v, want %v", got, tt.want)
+			}
+		})
 	}
 }

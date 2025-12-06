@@ -21,14 +21,6 @@
               <i class="bi bi-cloud-upload me-2"></i>上传文档
             </a>
           </li>
-          <li class="nav-item mb-2">
-            <a class="nav-link" 
-               href="#" 
-               :class="{ active: currentView === 'versions' }"
-               @click="currentView = 'versions'">
-              <i class="bi bi-git-branch me-2"></i>版本管理
-            </a>
-          </li>
         </ul>
         
         <!-- 过滤器 -->

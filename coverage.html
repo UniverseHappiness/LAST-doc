@@ -1,0 +1,1764 @@
+
+<!DOCTYPE html>
+<html>
+	<head>
+		<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+		<title>cmd: Go Coverage Report</title>
+		<style>
+			body {
+				background: black;
+				color: rgb(80, 80, 80);
+			}
+			body, pre, #legend span {
+				font-family: Menlo, monospace;
+				font-weight: bold;
+			}
+			#topbar {
+				background: black;
+				position: fixed;
+				top: 0; left: 0; right: 0;
+				height: 42px;
+				border-bottom: 1px solid rgb(80, 80, 80);
+			}
+			#content {
+				margin-top: 50px;
+			}
+			#nav, #legend {
+				float: left;
+				margin-left: 10px;
+			}
+			#legend {
+				margin-top: 12px;
+			}
+			#nav {
+				margin-top: 10px;
+			}
+			#legend span {
+				margin: 0 5px;
+			}
+			.cov0 { color: rgb(192, 0, 0) }
+.cov1 { color: rgb(128, 128, 128) }
+.cov2 { color: rgb(116, 140, 131) }
+.cov3 { color: rgb(104, 152, 134) }
+.cov4 { color: rgb(92, 164, 137) }
+.cov5 { color: rgb(80, 176, 140) }
+.cov6 { color: rgb(68, 188, 143) }
+.cov7 { color: rgb(56, 200, 146) }
+.cov8 { color: rgb(44, 212, 149) }
+.cov9 { color: rgb(32, 224, 152) }
+.cov10 { color: rgb(20, 236, 155) }
+
+		</style>
+	</head>
+	<body>
+		<div id="topbar">
+			<div id="nav">
+				<select id="files">
+				
+				<option value="file0">github.com/UniverseHappiness/LAST-doc/cmd/main.go (29.3%)</option>
+				
+				<option value="file1">github.com/UniverseHappiness/LAST-doc/internal/handler/document_handler.go (41.5%)</option>
+				
+				<option value="file2">github.com/UniverseHappiness/LAST-doc/internal/service/document_service.go (2.1%)</option>
+				
+				<option value="file3">github.com/UniverseHappiness/LAST-doc/internal/service/parser_service.go (21.4%)</option>
+				
+				<option value="file4">github.com/UniverseHappiness/LAST-doc/internal/service/storage_service.go (5.4%)</option>
+				
+				</select>
+			</div>
+			<div id="legend">
+				<span>not tracked</span>
+			
+				<span class="cov0">not covered</span>
+				<span class="cov8">covered</span>
+			
+			</div>
+		</div>
+		<div id="content">
+		
+		<pre class="file" id="file0" style="display: none">package main
+
+import (
+        // "context"
+        "fmt"
+        "log"
+        "os"
+
+        // "path/filepath"
+
+        // "github.com/gin-gonic/gin"
+        "gorm.io/driver/postgres"
+        "gorm.io/gorm"
+
+        "github.com/UniverseHappiness/LAST-doc/internal/handler"
+        "github.com/UniverseHappiness/LAST-doc/internal/model"
+        "github.com/UniverseHappiness/LAST-doc/internal/repository"
+        "github.com/UniverseHappiness/LAST-doc/internal/router"
+        "github.com/UniverseHappiness/LAST-doc/internal/service"
+)
+
+func main() <span class="cov0" title="0">{
+        // 从环境变量获取配置
+        dbHost := getEnv("DB_HOST", "localhost")
+        dbPort := getEnv("DB_PORT", "5432")
+        dbUser := getEnv("DB_USER", "postgres")
+        dbPassword := getEnv("DB_PASSWORD", "postgres")
+        dbName := getEnv("DB_NAME", "ai_doc_library")
+        serverPort := getEnv("SERVER_PORT", "8080")
+        baseStorageDir := getEnv("STORAGE_DIR", "./storage")
+
+        // 构建数据库连接字符串
+        dsn := buildDSN(dbHost, dbPort, dbUser, dbPassword, dbName)
+
+        // 连接数据库
+        db, err := gorm.Open(postgres.Open(dsn), &amp;gorm.Config{})
+        if err != nil </span><span class="cov0" title="0">{
+                log.Fatalf("Failed to connect to database: %v", err)
+        }</span>
+
+        // 自动迁移数据库表
+        <span class="cov0" title="0">err = autoMigrate(db)
+        if err != nil </span><span class="cov0" title="0">{
+                log.Fatalf("Failed to migrate database: %v", err)
+        }</span>
+
+        // 创建存储目录
+        <span class="cov0" title="0">if err := os.MkdirAll(baseStorageDir, 0755); err != nil </span><span class="cov0" title="0">{
+                log.Fatalf("Failed to create storage directory: %v", err)
+        }</span>
+
+        // 初始化仓库
+        <span class="cov0" title="0">documentRepo := repository.NewDocumentRepository(db)
+        versionRepo := repository.NewDocumentVersionRepository(db)
+        metadataRepo := repository.NewDocumentMetadataRepository(db)
+
+        // 初始化服务
+        storageService := service.NewLocalStorageService(baseStorageDir)
+        parserService := service.NewParserService()
+        documentService := service.NewDocumentService(
+                documentRepo,
+                versionRepo,
+                metadataRepo,
+                storageService,
+                parserService,
+                baseStorageDir,
+        )
+
+        // 初始化处理器
+        documentHandler := handler.NewDocumentHandler(documentService)
+
+        // 初始化路由器
+        router := router.NewRouter(documentHandler)
+        r := router.SetupRoutes()
+
+        // 启动服务器
+        log.Printf("Server starting on port %s", serverPort)
+        log.Printf("Storage directory: %s", baseStorageDir)
+        if err := r.Run(":" + serverPort); err != nil </span><span class="cov0" title="0">{
+                log.Fatalf("Failed to start server: %v", err)
+        }</span>
+}
+
+// getEnv 获取环境变量，如果不存在则使用默认值
+func getEnv(key, defaultValue string) string <span class="cov8" title="1">{
+        if value := os.Getenv(key); value != "" </span><span class="cov8" title="1">{
+                return value
+        }</span>
+        <span class="cov8" title="1">return defaultValue</span>
+}
+
+// buildDSN 构建数据库连接字符串
+func buildDSN(host, port, user, password, dbname string) string <span class="cov8" title="1">{
+        return "host=" + host + " user=" + user + " password=" + password + " dbname=" + dbname + " port=" + port + " sslmode=disable TimeZone=Asia/Shanghai"
+}</span>
+
+// autoMigrate 自动迁移数据库表
+func autoMigrate(db *gorm.DB) error <span class="cov8" title="1">{
+        // 首先执行自动迁移
+        err := db.AutoMigrate(
+                &amp;model.Document{},
+                &amp;model.DocumentVersion{},
+                &amp;model.DocumentMetadata{},
+        )
+        if err != nil </span><span class="cov0" title="0">{
+                return err
+        }</span>
+
+        // 为document_versions表添加复合唯一约束
+        // 确保同一文档的版本号唯一
+        <span class="cov8" title="1">if err := addUniqueConstraint(db); err != nil </span><span class="cov0" title="0">{
+                return err
+        }</span>
+
+        <span class="cov8" title="1">return nil</span>
+}
+
+// addUniqueConstraint 添加数据库唯一约束
+func addUniqueConstraint(db *gorm.DB) error <span class="cov8" title="1">{
+        // 检查约束是否已存在
+        var count int64
+        if err := db.Raw(`
+                SELECT COUNT(*)
+                FROM information_schema.table_constraints
+                WHERE table_name = 'document_versions'
+                AND constraint_name = 'idx_document_version_unique'
+        `).Scan(&amp;count).Error; err != nil </span><span class="cov0" title="0">{
+                return err
+        }</span>
+
+        // 如果约束不存在，则创建
+        <span class="cov8" title="1">if count == 0 </span><span class="cov8" title="1">{
+                log.Println("准备添加document_versions表的复合唯一约束...")
+
+                // 首先清理重复数据
+                if err := cleanDuplicateVersions(db); err != nil </span><span class="cov0" title="0">{
+                        return fmt.Errorf("failed to clean duplicate versions: %v", err)
+                }</span>
+
+                // 然后添加唯一约束
+                <span class="cov8" title="1">if err := db.Exec(`
+                        ALTER TABLE document_versions
+                        ADD CONSTRAINT idx_document_version_unique
+                        UNIQUE (document_id, version)
+                `).Error; err != nil </span><span class="cov0" title="0">{
+                        return fmt.Errorf("failed to add unique constraint: %v", err)
+                }</span>
+                <span class="cov8" title="1">log.Println("成功添加document_versions表的复合唯一约束 (document_id, version)")</span>
+        }
+
+        <span class="cov8" title="1">return nil</span>
+}
+
+// cleanDuplicateVersions 清理重复的文档版本数据
+func cleanDuplicateVersions(db *gorm.DB) error <span class="cov8" title="1">{
+        log.Println("开始清理重复的文档版本数据...")
+
+        // 查看重复数据
+        var duplicates []struct {
+                DocumentID     string
+                Version        string
+                DuplicateCount int64
+        }
+
+        if err := db.Raw(`
+                SELECT document_id, version, COUNT(*) as duplicate_count
+                FROM document_versions
+                GROUP BY document_id, version
+                HAVING COUNT(*) &gt; 1
+        `).Scan(&amp;duplicates).Error; err != nil </span><span class="cov0" title="0">{
+                return err
+        }</span>
+
+        <span class="cov8" title="1">if len(duplicates) == 0 </span><span class="cov8" title="1">{
+                log.Println("没有发现重复的版本数据")
+                return nil
+        }</span>
+
+        <span class="cov0" title="0">log.Printf("发现 %d 组重复的版本数据", len(duplicates))
+
+        // 创建临时表存储需要保留的版本ID（每个document_id+version组合保留最新的一个）
+        if err := db.Exec(`
+                CREATE TEMPORARY TABLE versions_to_keep AS
+                WITH ranked_versions AS (
+                        SELECT
+                                id,
+                                document_id,
+                                version,
+                                ROW_NUMBER() OVER (PARTITION BY document_id, version ORDER BY created_at DESC) as rn
+                        FROM document_versions
+                )
+                SELECT id FROM ranked_versions WHERE rn = 1
+        `).Error; err != nil </span><span class="cov0" title="0">{
+                return err
+        }</span>
+
+        // 删除重复的版本（保留最新的）
+        <span class="cov0" title="0">result := db.Exec(`
+                DELETE FROM document_versions
+                WHERE id NOT IN (SELECT id FROM versions_to_keep)
+        `)
+
+        if result.Error != nil </span><span class="cov0" title="0">{
+                // 删除临时表
+                db.Exec("DROP TABLE IF EXISTS versions_to_keep")
+                return result.Error
+        }</span>
+
+        <span class="cov0" title="0">deletedCount := result.RowsAffected
+        log.Printf("删除了 %d 个重复的版本记录", deletedCount)
+
+        // 删除临时表
+        if err := db.Exec("DROP TABLE versions_to_keep").Error; err != nil </span><span class="cov0" title="0">{
+                return err
+        }</span>
+
+        // 验证清理结果
+        <span class="cov0" title="0">var remainingDuplicates int64
+        if err := db.Raw(`
+                SELECT COUNT(*)
+                FROM (
+                        SELECT document_id, version
+                        FROM document_versions
+                        GROUP BY document_id, version
+                        HAVING COUNT(*) &gt; 1
+                ) as remaining
+        `).Scan(&amp;remainingDuplicates).Error; err != nil </span><span class="cov0" title="0">{
+                return err
+        }</span>
+
+        <span class="cov0" title="0">if remainingDuplicates &gt; 0 </span><span class="cov0" title="0">{
+                return fmt.Errorf("清理后仍有 %d 组重复数据", remainingDuplicates)
+        }</span>
+
+        <span class="cov0" title="0">log.Println("重复数据清理完成")
+        return nil</span>
+}
+</pre>
+		
+		<pre class="file" id="file1" style="display: none">package handler
+
+import (
+        "context"
+        "log"
+        "net/http"
+        "strconv"
+        "strings"
+
+        "github.com/UniverseHappiness/LAST-doc/internal/model"
+        "github.com/UniverseHappiness/LAST-doc/internal/service"
+
+        "github.com/gin-gonic/gin"
+)
+
+// DocumentHandler 文档处理器
+type DocumentHandler struct {
+        documentService service.DocumentService
+}
+
+// NewDocumentHandler 创建文档处理器实例
+func NewDocumentHandler(documentService service.DocumentService) *DocumentHandler <span class="cov8" title="1">{
+        return &amp;DocumentHandler{
+                documentService: documentService,
+        }
+}</span>
+
+// UploadDocument 上传文档
+func (h *DocumentHandler) UploadDocument(c *gin.Context) <span class="cov8" title="1">{
+        // 获取表单数据
+        name := c.PostForm("name")
+        if name == "" </span><span class="cov8" title="1">{
+                c.JSON(http.StatusBadRequest, gin.H{
+                        "code":    400,
+                        "message": "文档名称不能为空",
+                })
+                return
+        }</span>
+
+        <span class="cov8" title="1">docType := c.PostForm("type")
+        if docType == "" </span><span class="cov8" title="1">{
+                c.JSON(http.StatusBadRequest, gin.H{
+                        "code":    400,
+                        "message": "文档类型不能为空",
+                })
+                return
+        }</span>
+
+        <span class="cov8" title="1">version := c.PostForm("version")
+        if version == "" </span><span class="cov0" title="0">{
+                c.JSON(http.StatusBadRequest, gin.H{
+                        "code":    400,
+                        "message": "文档版本不能为空",
+                })
+                return
+        }</span>
+
+        <span class="cov8" title="1">library := c.PostForm("library")
+        if library == "" </span><span class="cov0" title="0">{
+                c.JSON(http.StatusBadRequest, gin.H{
+                        "code":    400,
+                        "message": "所属库不能为空",
+                })
+                return
+        }</span>
+
+        <span class="cov8" title="1">description := c.PostForm("description")
+        tagsStr := c.PostForm("tags")
+        var tags []string
+        if tagsStr != "" </span><span class="cov8" title="1">{
+                tags = strings.Split(tagsStr, ",")
+                // 去除前后空格
+                for i, tag := range tags </span><span class="cov8" title="1">{
+                        tags[i] = strings.TrimSpace(tag)
+                }</span>
+        }
+
+        // 添加调试日志
+        <span class="cov8" title="1">log.Printf("DEBUG: 前端传递的标签数据 - tagsStr: '%s', 处理后的 tags: %+v (类型: %T)\n", tagsStr, tags, tags)
+
+        // 获取上传的文件
+        file, err := c.FormFile("file")
+        if err != nil </span><span class="cov0" title="0">{
+                c.JSON(http.StatusBadRequest, gin.H{
+                        "code":    400,
+                        "message": "获取上传文件失败: " + err.Error(),
+                })
+                return
+        }</span>
+
+        // 验证文件类型
+        <span class="cov8" title="1">if !isValidFileType(file.Filename, model.DocumentType(docType)) </span><span class="cov8" title="1">{
+                c.JSON(http.StatusBadRequest, gin.H{
+                        "code":    400,
+                        "message": "文件类型与文档类型不匹配",
+                })
+                return
+        }</span>
+
+        // 调用服务层上传文档
+        <span class="cov8" title="1">document, err := h.documentService.UploadDocument(context.Background(), file, name, docType, version, library, description, tags)
+        if err != nil </span><span class="cov0" title="0">{
+                c.JSON(http.StatusInternalServerError, gin.H{
+                        "code":    500,
+                        "message": "上传文档失败: " + err.Error(),
+                })
+                return
+        }</span>
+
+        <span class="cov8" title="1">c.JSON(http.StatusOK, gin.H{
+                "code": 200,
+                "data": gin.H{
+                        "id":     document.ID,
+                        "name":   document.Name,
+                        "status": document.Status,
+                },
+                "message": "上传成功",
+        })</span>
+}
+
+// GetDocument 获取文档
+func (h *DocumentHandler) GetDocument(c *gin.Context) <span class="cov8" title="1">{
+        id := c.Param("id")
+        if id == "" </span><span class="cov8" title="1">{
+                c.JSON(http.StatusBadRequest, gin.H{
+                        "code":    400,
+                        "message": "文档ID不能为空",
+                })
+                return
+        }</span>
+
+        <span class="cov8" title="1">document, err := h.documentService.GetDocument(context.Background(), id)
+        if err != nil </span><span class="cov8" title="1">{
+                c.JSON(http.StatusInternalServerError, gin.H{
+                        "code":    500,
+                        "message": "获取文档失败: " + err.Error(),
+                })
+                return
+        }</span>
+
+        <span class="cov8" title="1">c.JSON(http.StatusOK, gin.H{
+                "code":    200,
+                "data":    document,
+                "message": "获取成功",
+        })</span>
+}
+
+// GetDocuments 获取文档列表
+func (h *DocumentHandler) GetDocuments(c *gin.Context) <span class="cov8" title="1">{
+        // 解析分页参数
+        page, err := strconv.Atoi(c.DefaultQuery("page", "1"))
+        if err != nil || page &lt; 1 </span><span class="cov0" title="0">{
+                page = 1
+        }</span>
+
+        <span class="cov8" title="1">size, err := strconv.Atoi(c.DefaultQuery("size", "10"))
+        if err != nil || size &lt; 1 || size &gt; 100 </span><span class="cov0" title="0">{
+                size = 10
+        }</span>
+
+        // 解析过滤条件
+        <span class="cov8" title="1">filters := make(map[string]interface{})
+
+        if library := c.Query("library"); library != "" </span><span class="cov0" title="0">{
+                filters["library"] = library
+        }</span>
+
+        <span class="cov8" title="1">if docType := c.Query("type"); docType != "" </span><span class="cov0" title="0">{
+                filters["type"] = model.DocumentType(docType)
+        }</span>
+
+        <span class="cov8" title="1">if version := c.Query("version"); version != "" </span><span class="cov0" title="0">{
+                filters["version"] = version
+        }</span>
+
+        <span class="cov8" title="1">if status := c.Query("status"); status != "" </span><span class="cov0" title="0">{
+                filters["status"] = model.DocumentStatus(status)
+        }</span>
+
+        <span class="cov8" title="1">if name := c.Query("name"); name != "" </span><span class="cov0" title="0">{
+                filters["name"] = name
+        }</span>
+
+        <span class="cov8" title="1">if tags := c.Query("tags"); tags != "" </span><span class="cov0" title="0">{
+                filters["tags"] = strings.Split(tags, ",")
+        }</span>
+
+        // 调用服务层获取文档列表
+        <span class="cov8" title="1">documents, total, err := h.documentService.GetDocuments(context.Background(), page, size, filters)
+        if err != nil </span><span class="cov0" title="0">{
+                c.JSON(http.StatusInternalServerError, gin.H{
+                        "code":    500,
+                        "message": "获取文档列表失败: " + err.Error(),
+                })
+                return
+        }</span>
+
+        // 为每个文档添加版本数量
+        <span class="cov8" title="1">for _, doc := range documents </span><span class="cov8" title="1">{
+                versionCount, err := h.documentService.GetDocumentVersionCount(context.Background(), doc.ID)
+                if err == nil </span><span class="cov8" title="1">{
+                        doc.VersionCount = versionCount
+                }</span>
+        }
+
+        <span class="cov8" title="1">c.JSON(http.StatusOK, gin.H{
+                "code": 200,
+                "data": gin.H{
+                        "total": total,
+                        "items": documents,
+                        "page":  page,
+                        "size":  size,
+                },
+                "message": "获取成功",
+        })</span>
+}
+
+// GetDocumentVersions 获取文档版本列表
+func (h *DocumentHandler) GetDocumentVersions(c *gin.Context) <span class="cov8" title="1">{
+        documentID := c.Param("id")
+        if documentID == "" </span><span class="cov0" title="0">{
+                c.JSON(http.StatusBadRequest, gin.H{
+                        "code":    400,
+                        "message": "文档ID不能为空",
+                })
+                return
+        }</span>
+
+        <span class="cov8" title="1">versions, err := h.documentService.GetDocumentVersions(context.Background(), documentID)
+        if err != nil </span><span class="cov0" title="0">{
+                c.JSON(http.StatusInternalServerError, gin.H{
+                        "code":    500,
+                        "message": "获取文档版本失败: " + err.Error(),
+                })
+                return
+        }</span>
+
+        <span class="cov8" title="1">c.JSON(http.StatusOK, gin.H{
+                "code":    200,
+                "data":    versions,
+                "message": "获取成功",
+        })</span>
+}
+
+// GetDocumentByVersion 根据版本获取文档
+func (h *DocumentHandler) GetDocumentByVersion(c *gin.Context) <span class="cov0" title="0">{
+        documentID := c.Param("id")
+        version := c.Param("version")
+
+        // 添加调试日志
+        log.Printf("DEBUG: 获取文档版本 - 文档ID: %s, 版本: %s\n", documentID, version)
+
+        if documentID == "" </span><span class="cov0" title="0">{
+                c.JSON(http.StatusBadRequest, gin.H{
+                        "code":    400,
+                        "message": "文档ID不能为空",
+                })
+                return
+        }</span>
+
+        <span class="cov0" title="0">if version == "" </span><span class="cov0" title="0">{
+                c.JSON(http.StatusBadRequest, gin.H{
+                        "code":    400,
+                        "message": "版本号不能为空",
+                })
+                return
+        }</span>
+
+        <span class="cov0" title="0">documentVersion, err := h.documentService.GetDocumentByVersion(context.Background(), documentID, version)
+        if err != nil </span><span class="cov0" title="0">{
+                log.Printf("DEBUG: 获取文档版本失败 - 文档ID: %s, 版本: %s, 错误: %v\n", documentID, version, err)
+                c.JSON(http.StatusInternalServerError, gin.H{
+                        "code":    500,
+                        "message": "获取文档版本失败: " + err.Error(),
+                })
+                return
+        }</span>
+
+        <span class="cov0" title="0">log.Printf("DEBUG: 成功获取文档版本 - 文档ID: %s, 版本: %s, 内容长度: %d, 状态: %s\n",
+                documentID, version, len(documentVersion.Content), documentVersion.Status)
+
+        c.JSON(http.StatusOK, gin.H{
+                "code":    200,
+                "data":    documentVersion,
+                "message": "获取成功",
+        })</span>
+}
+
+// DeleteDocument 删除文档
+func (h *DocumentHandler) DeleteDocument(c *gin.Context) <span class="cov8" title="1">{
+        id := c.Param("id")
+        if id == "" </span><span class="cov0" title="0">{
+                c.JSON(http.StatusBadRequest, gin.H{
+                        "code":    400,
+                        "message": "文档ID不能为空",
+                })
+                return
+        }</span>
+
+        <span class="cov8" title="1">if err := h.documentService.DeleteDocument(context.Background(), id); err != nil </span><span class="cov0" title="0">{
+                c.JSON(http.StatusInternalServerError, gin.H{
+                        "code":    500,
+                        "message": "删除文档失败: " + err.Error(),
+                })
+                return
+        }</span>
+
+        <span class="cov8" title="1">c.JSON(http.StatusOK, gin.H{
+                "code":    200,
+                "message": "删除成功",
+        })</span>
+}
+
+// UpdateDocument 更新文档
+func (h *DocumentHandler) UpdateDocument(c *gin.Context) <span class="cov0" title="0">{
+        id := c.Param("id")
+        if id == "" </span><span class="cov0" title="0">{
+                c.JSON(http.StatusBadRequest, gin.H{
+                        "code":    400,
+                        "message": "文档ID不能为空",
+                })
+                return
+        }</span>
+
+        // 解析更新数据
+        <span class="cov0" title="0">var updates map[string]interface{}
+        if err := c.ShouldBindJSON(&amp;updates); err != nil </span><span class="cov0" title="0">{
+                c.JSON(http.StatusBadRequest, gin.H{
+                        "code":    400,
+                        "message": "请求数据格式错误: " + err.Error(),
+                })
+                return
+        }</span>
+
+        // 不允许更新ID和创建时间
+        <span class="cov0" title="0">delete(updates, "id")
+        delete(updates, "created_at")
+
+        if err := h.documentService.UpdateDocument(context.Background(), id, updates); err != nil </span><span class="cov0" title="0">{
+                c.JSON(http.StatusInternalServerError, gin.H{
+                        "code":    500,
+                        "message": "更新文档失败: " + err.Error(),
+                })
+                return
+        }</span>
+
+        <span class="cov0" title="0">c.JSON(http.StatusOK, gin.H{
+                "code":    200,
+                "message": "更新成功",
+        })</span>
+}
+
+// DeleteDocumentVersion 删除文档版本
+func (h *DocumentHandler) DeleteDocumentVersion(c *gin.Context) <span class="cov0" title="0">{
+        documentID := c.Param("id")
+        version := c.Param("version")
+
+        if documentID == "" </span><span class="cov0" title="0">{
+                c.JSON(http.StatusBadRequest, gin.H{
+                        "code":    400,
+                        "message": "文档ID不能为空",
+                })
+                return
+        }</span>
+
+        <span class="cov0" title="0">if version == "" </span><span class="cov0" title="0">{
+                c.JSON(http.StatusBadRequest, gin.H{
+                        "code":    400,
+                        "message": "版本号不能为空",
+                })
+                return
+        }</span>
+
+        <span class="cov0" title="0">if err := h.documentService.DeleteDocumentVersion(context.Background(), documentID, version); err != nil </span><span class="cov0" title="0">{
+                c.JSON(http.StatusInternalServerError, gin.H{
+                        "code":    500,
+                        "message": "删除文档版本失败: " + err.Error(),
+                })
+                return
+        }</span>
+
+        <span class="cov0" title="0">c.JSON(http.StatusOK, gin.H{
+                "code":    200,
+                "message": "删除成功",
+        })</span>
+}
+
+// DownloadDocument 下载文档
+func (h *DocumentHandler) DownloadDocument(c *gin.Context) <span class="cov0" title="0">{
+        id := c.Param("id")
+        if id == "" </span><span class="cov0" title="0">{
+                c.JSON(http.StatusBadRequest, gin.H{
+                        "code":    400,
+                        "message": "文档ID不能为空",
+                })
+                return
+        }</span>
+
+        // 获取文档信息
+        <span class="cov0" title="0">document, err := h.documentService.GetDocument(context.Background(), id)
+        if err != nil </span><span class="cov0" title="0">{
+                c.JSON(http.StatusInternalServerError, gin.H{
+                        "code":    500,
+                        "message": "获取文档失败: " + err.Error(),
+                })
+                return
+        }</span>
+
+        // 设置响应头
+        <span class="cov0" title="0">c.Header("Content-Description", "File Transfer")
+        c.Header("Content-Transfer-Encoding", "binary")
+        c.Header("Content-Disposition", "attachment; filename="+document.Name)
+        c.Header("Content-Type", "application/octet-stream")
+
+        // 发送文件
+        c.File(document.FilePath)</span>
+}
+
+// DownloadDocumentVersion 下载文档版本
+func (h *DocumentHandler) DownloadDocumentVersion(c *gin.Context) <span class="cov0" title="0">{
+        documentID := c.Param("id")
+        version := c.Param("version")
+
+        if documentID == "" </span><span class="cov0" title="0">{
+                c.JSON(http.StatusBadRequest, gin.H{
+                        "code":    400,
+                        "message": "文档ID不能为空",
+                })
+                return
+        }</span>
+
+        <span class="cov0" title="0">if version == "" </span><span class="cov0" title="0">{
+                c.JSON(http.StatusBadRequest, gin.H{
+                        "code":    400,
+                        "message": "版本号不能为空",
+                })
+                return
+        }</span>
+
+        // 获取文档版本信息
+        <span class="cov0" title="0">documentVersion, err := h.documentService.GetDocumentByVersion(context.Background(), documentID, version)
+        if err != nil </span><span class="cov0" title="0">{
+                c.JSON(http.StatusInternalServerError, gin.H{
+                        "code":    500,
+                        "message": "获取文档版本失败: " + err.Error(),
+                })
+                return
+        }</span>
+
+        // 设置响应头
+        <span class="cov0" title="0">c.Header("Content-Description", "File Transfer")
+        c.Header("Content-Transfer-Encoding", "binary")
+        c.Header("Content-Disposition", "attachment; filename=v"+version+"_"+documentID)
+        c.Header("Content-Type", "application/octet-stream")
+
+        // 发送文件
+        c.File(documentVersion.FilePath)</span>
+}
+
+// GetDocumentMetadata 获取文档元数据
+func (h *DocumentHandler) GetDocumentMetadata(c *gin.Context) <span class="cov0" title="0">{
+        id := c.Param("id")
+        if id == "" </span><span class="cov0" title="0">{
+                c.JSON(http.StatusBadRequest, gin.H{
+                        "code":    400,
+                        "message": "文档ID不能为空",
+                })
+                return
+        }</span>
+
+        <span class="cov0" title="0">metadata, err := h.documentService.GetDocumentMetadata(context.Background(), id)
+        if err != nil </span><span class="cov0" title="0">{
+                c.JSON(http.StatusInternalServerError, gin.H{
+                        "code":    500,
+                        "message": "获取文档元数据失败: " + err.Error(),
+                })
+                return
+        }</span>
+
+        <span class="cov0" title="0">c.JSON(http.StatusOK, gin.H{
+                "code":    200,
+                "data":    metadata,
+                "message": "获取成功",
+        })</span>
+}
+
+// isValidFileType 验证文件类型是否与文档类型匹配
+func isValidFileType(filename string, docType model.DocumentType) bool <span class="cov8" title="1">{
+        dotIndex := strings.LastIndex(filename, ".")
+        if dotIndex == -1 </span><span class="cov8" title="1">{
+                return false // 没有扩展名
+        }</span>
+        <span class="cov8" title="1">ext := strings.ToLower(filename[dotIndex:])
+
+        switch docType </span>{
+        case model.DocumentTypeMarkdown:<span class="cov8" title="1">
+                return ext == ".md" || ext == ".markdown"</span>
+        case model.DocumentTypePDF:<span class="cov8" title="1">
+                return ext == ".pdf"</span>
+        case model.DocumentTypeDocx:<span class="cov8" title="1">
+                return ext == ".docx" || ext == ".doc"</span>
+        case model.DocumentTypeSwagger, model.DocumentTypeOpenAPI:<span class="cov8" title="1">
+                return ext == ".json" || ext == ".yaml" || ext == ".yml"</span>
+        case model.DocumentTypeJavaDoc:<span class="cov8" title="1">
+                return ext == ".html" || ext == ".htm"</span>
+        default:<span class="cov8" title="1">
+                return false</span>
+        }
+}
+</pre>
+		
+		<pre class="file" id="file2" style="display: none">package service
+
+import (
+        "context"
+        "fmt"
+        "io"
+        "log"
+        "mime/multipart"
+        "os"
+        "path/filepath"
+        "time"
+
+        "github.com/UniverseHappiness/LAST-doc/internal/model"
+        "github.com/UniverseHappiness/LAST-doc/internal/repository"
+
+        "github.com/google/uuid"
+)
+
+// DocumentService 文档服务接口
+type DocumentService interface {
+        UploadDocument(ctx context.Context, file *multipart.FileHeader, name, docType, version, library, description string, tags []string) (*model.Document, error)
+        GetDocument(ctx context.Context, id string) (*model.Document, error)
+        GetDocuments(ctx context.Context, page, size int, filters map[string]interface{}) ([]*model.Document, int64, error)
+        GetDocumentVersions(ctx context.Context, documentID string) ([]*model.DocumentVersion, error)
+        GetDocumentByVersion(ctx context.Context, documentID, version string) (*model.DocumentVersion, error)
+        DeleteDocument(ctx context.Context, id string) error
+        DeleteDocumentVersion(ctx context.Context, documentID, version string) error
+        GetDocumentVersionCount(ctx context.Context, documentID string) (int64, error)
+        GetDocumentMetadata(ctx context.Context, documentID string) (map[string]interface{}, error)
+        UpdateDocument(ctx context.Context, id string, updates map[string]interface{}) error
+}
+
+// documentService 文档服务实现
+type documentService struct {
+        documentRepo   repository.DocumentRepository
+        versionRepo    repository.DocumentVersionRepository
+        metadataRepo   repository.DocumentMetadataRepository
+        storageService StorageService
+        parserService  DocumentParserService
+        baseStorageDir string
+}
+
+// NewDocumentService 创建文档服务实例
+func NewDocumentService(
+        documentRepo repository.DocumentRepository,
+        versionRepo repository.DocumentVersionRepository,
+        metadataRepo repository.DocumentMetadataRepository,
+        storageService StorageService,
+        parserService DocumentParserService,
+        baseStorageDir string,
+) DocumentService <span class="cov0" title="0">{
+        return &amp;documentService{
+                documentRepo:   documentRepo,
+                versionRepo:    versionRepo,
+                metadataRepo:   metadataRepo,
+                storageService: storageService,
+                parserService:  parserService,
+                baseStorageDir: baseStorageDir,
+        }
+}</span>
+
+// UploadDocument 上传文档
+func (s *documentService) UploadDocument(ctx context.Context, file *multipart.FileHeader, name, docType, version, library, description string, tags []string) (*model.Document, error) <span class="cov0" title="0">{
+        // 验证文档类型
+        documentType := model.DocumentType(docType)
+        if !isValidDocumentType(documentType) </span><span class="cov0" title="0">{
+                return nil, fmt.Errorf("invalid document type: %s", docType)
+        }</span>
+
+        // 检查是否已有同库文档（仅通过Library判断）
+        <span class="cov0" title="0">existingDocs, _, err := s.documentRepo.List(ctx, 1, 100, map[string]interface{}{
+                "library": library,
+        })
+        if err != nil </span><span class="cov0" title="0">{
+                return nil, fmt.Errorf("failed to check existing documents: %v", err)
+        }</span>
+
+        // 生成文档ID
+        <span class="cov0" title="0">var documentID string
+
+        // 如果找到同库的文档，使用其ID
+        if len(existingDocs) &gt; 0 </span><span class="cov0" title="0">{
+                documentID = existingDocs[0].ID
+        }</span> else<span class="cov0" title="0"> {
+                // 否则创建新文档
+                documentID = uuid.New().String()
+        }</span>
+
+        // 创建文档存储目录
+        <span class="cov0" title="0">storageDir := filepath.Join(s.baseStorageDir, documentID)
+        log.Printf("DEBUG: 创建文档存储目录 - 路径: %s\n", storageDir)
+        if err := os.MkdirAll(storageDir, 0755); err != nil </span><span class="cov0" title="0">{
+                return nil, fmt.Errorf("failed to create storage directory: %v", err)
+        }</span>
+
+        // 保存文件
+        <span class="cov0" title="0">filePath := filepath.Join(storageDir, file.Filename)
+        log.Printf("DEBUG: 保存文件 - 路径: %s\n", filePath)
+        if err := s.saveFile(file, filePath); err != nil </span><span class="cov0" title="0">{
+                return nil, fmt.Errorf("failed to save file: %v", err)
+        }</span>
+        <span class="cov0" title="0">log.Printf("DEBUG: 文件保存成功 - 大小: %d 字节\n", file.Size)
+
+        // 如果是新文档，创建文档记录
+        var document *model.Document
+        if len(existingDocs) == 0 </span><span class="cov0" title="0">{
+                document = &amp;model.Document{
+                        ID:          documentID,
+                        Name:        name,
+                        Type:        documentType,
+                        Version:     version,
+                        Tags:        tags,
+                        FilePath:    filePath,
+                        FileSize:    file.Size,
+                        Status:      model.DocumentStatusProcessing,
+                        Description: description,
+                        Library:     library,
+                        CreatedAt:   time.Now(),
+                        UpdatedAt:   time.Now(),
+                }
+
+                // 保存文档记录
+                if err := s.documentRepo.Create(ctx, document); err != nil </span><span class="cov0" title="0">{
+                        // 删除已保存的文件
+                        os.Remove(filePath)
+                        return nil, fmt.Errorf("failed to create document record: %v", err)
+                }</span>
+        } else<span class="cov0" title="0"> {
+                // 获取现有文档
+                document = existingDocs[0]
+        }</span>
+
+        // 检查版本号是否已存在
+        <span class="cov0" title="0">log.Printf("DEBUG: 检查版本号唯一性 - 文档ID: %s, 版本: %s\n", documentID, version)
+        existingVersion, err := s.versionRepo.GetByDocumentIDAndVersion(ctx, documentID, version)
+        if err == nil &amp;&amp; existingVersion != nil </span><span class="cov0" title="0">{
+                log.Printf("DEBUG: 版本号已存在 - 文档ID: %s, 版本: %s, 现有版本ID: %s\n",
+                        documentID, version, existingVersion.ID)
+                // 删除已保存的文件
+                os.Remove(filePath)
+                // 如果是新文档，还需要删除文档记录
+                if len(existingDocs) == 0 </span><span class="cov0" title="0">{
+                        s.documentRepo.Delete(ctx, documentID)
+                }</span>
+                <span class="cov0" title="0">return nil, fmt.Errorf("版本号 %s 已存在，请使用不同的版本号", version)</span>
+        }
+        <span class="cov0" title="0">log.Printf("DEBUG: 版本号唯一性检查通过 - 文档ID: %s, 版本: %s\n", documentID, version)
+
+        // 创建文档版本记录
+        documentVersion := &amp;model.DocumentVersion{
+                ID:          uuid.New().String(),
+                DocumentID:  document.ID, // 使用文档的ID
+                Version:     version,
+                FilePath:    filePath,
+                FileSize:    file.Size,
+                Status:      model.DocumentStatusProcessing,
+                Description: description,
+                CreatedAt:   time.Now(),
+                UpdatedAt:   time.Now(),
+        }
+
+        log.Printf("DEBUG: 准备创建文档版本记录 - 文档ID: %s, 版本: %s, 版本记录ID: %s\n",
+                documentID, version, documentVersion.ID)
+        if err := s.versionRepo.Create(ctx, documentVersion); err != nil </span><span class="cov0" title="0">{
+                log.Printf("DEBUG: 创建文档版本记录失败 - 文档ID: %s, 版本: %s, 错误: %v\n",
+                        documentID, version, err)
+                // 删除已保存的文件
+                os.Remove(filePath)
+                // 如果是新文档，还需要删除文档记录
+                if len(existingDocs) == 0 </span><span class="cov0" title="0">{
+                        s.documentRepo.Delete(ctx, documentID)
+                }</span>
+                <span class="cov0" title="0">return nil, fmt.Errorf("failed to create document version record: %v", err)</span>
+        }
+        <span class="cov0" title="0">log.Printf("DEBUG: 文档版本记录创建成功 - 文档ID: %s, 版本: %s, 版本记录ID: %s\n",
+                documentID, version, documentVersion.ID)
+
+        // 异步处理文档解析
+        log.Printf("DEBUG: 开始异步处理文档解析 - 文档ID: %s, 版本: %s, 文件路径: %s\n", documentID, version, filePath)
+        go s.processDocumentWithFile(documentID, version, filePath)
+
+        return document, nil</span>
+}
+
+// GetDocument 获取文档
+func (s *documentService) GetDocument(ctx context.Context, id string) (*model.Document, error) <span class="cov0" title="0">{
+        return s.documentRepo.GetByID(ctx, id)
+}</span>
+
+// GetDocuments 获取文档列表
+func (s *documentService) GetDocuments(ctx context.Context, page, size int, filters map[string]interface{}) ([]*model.Document, int64, error) <span class="cov0" title="0">{
+        return s.documentRepo.List(ctx, page, size, filters)
+}</span>
+
+// GetDocumentVersions 获取文档版本列表
+func (s *documentService) GetDocumentVersions(ctx context.Context, documentID string) ([]*model.DocumentVersion, error) <span class="cov0" title="0">{
+        return s.versionRepo.GetByDocumentID(ctx, documentID)
+}</span>
+
+// GetDocumentByVersion 根据版本获取文档
+func (s *documentService) GetDocumentByVersion(ctx context.Context, documentID, version string) (*model.DocumentVersion, error) <span class="cov0" title="0">{
+        return s.versionRepo.GetByDocumentIDAndVersion(ctx, documentID, version)
+}</span>
+
+// DeleteDocument 删除文档
+func (s *documentService) DeleteDocument(ctx context.Context, id string) error <span class="cov0" title="0">{
+        // 获取文档信息
+        document, err := s.documentRepo.GetByID(ctx, id)
+        if err != nil </span><span class="cov0" title="0">{
+                return err
+        }</span>
+
+        // 删除文件
+        <span class="cov0" title="0">if err := os.RemoveAll(filepath.Dir(document.FilePath)); err != nil </span><span class="cov0" title="0">{
+                return fmt.Errorf("failed to delete document files: %v", err)
+        }</span>
+
+        // 删除文档记录
+        <span class="cov0" title="0">if err := s.documentRepo.Delete(ctx, id); err != nil </span><span class="cov0" title="0">{
+                return err
+        }</span>
+
+        // 删除文档版本记录
+        <span class="cov0" title="0">if err := s.versionRepo.DeleteByDocumentID(ctx, id); err != nil </span><span class="cov0" title="0">{
+                return err
+        }</span>
+
+        // 删除文档元数据
+        <span class="cov0" title="0">if err := s.metadataRepo.DeleteByDocumentID(ctx, id); err != nil </span><span class="cov0" title="0">{
+                return err
+        }</span>
+
+        <span class="cov0" title="0">return nil</span>
+}
+
+// UpdateDocument 更新文档
+func (s *documentService) UpdateDocument(ctx context.Context, id string, updates map[string]interface{}) error <span class="cov0" title="0">{
+        return s.documentRepo.Update(ctx, id, updates)
+}</span>
+
+// DeleteDocumentVersion 删除文档版本
+func (s *documentService) DeleteDocumentVersion(ctx context.Context, documentID, version string) error <span class="cov0" title="0">{
+        // 获取文档版本信息
+        docVersion, err := s.versionRepo.GetByDocumentIDAndVersion(ctx, documentID, version)
+        if err != nil </span><span class="cov0" title="0">{
+                return err
+        }</span>
+
+        // 删除版本文件
+        <span class="cov0" title="0">if err := os.Remove(docVersion.FilePath); err != nil </span><span class="cov0" title="0">{
+                return fmt.Errorf("failed to delete version file: %v", err)
+        }</span>
+
+        // 删除文档版本记录
+        <span class="cov0" title="0">if err := s.versionRepo.Delete(ctx, docVersion.ID); err != nil </span><span class="cov0" title="0">{
+                return err
+        }</span>
+
+        <span class="cov0" title="0">return nil</span>
+}
+
+// GetDocumentMetadata 获取文档元数据
+func (s *documentService) GetDocumentMetadata(ctx context.Context, documentID string) (map[string]interface{}, error) <span class="cov0" title="0">{
+        metadataList, err := s.metadataRepo.GetByDocumentID(ctx, documentID)
+        if err != nil </span><span class="cov0" title="0">{
+                return nil, err
+        }</span>
+
+        <span class="cov0" title="0">if len(metadataList) == 0 </span><span class="cov0" title="0">{
+                return nil, nil
+        }</span>
+
+        // 返回最新的元数据
+        <span class="cov0" title="0">return metadataList[0].Metadata, nil</span>
+}
+
+// GetDocumentVersionCount 获取文档的版本数量
+func (s *documentService) GetDocumentVersionCount(ctx context.Context, documentID string) (int64, error) <span class="cov0" title="0">{
+        return s.versionRepo.Count(ctx, documentID)
+}</span>
+
+// saveFile 保存文件
+func (s *documentService) saveFile(file *multipart.FileHeader, filePath string) error <span class="cov0" title="0">{
+        src, err := file.Open()
+        if err != nil </span><span class="cov0" title="0">{
+                return err
+        }</span>
+        <span class="cov0" title="0">defer src.Close()
+
+        dst, err := os.Create(filePath)
+        if err != nil </span><span class="cov0" title="0">{
+                return err
+        }</span>
+        <span class="cov0" title="0">defer dst.Close()
+
+        if _, err = io.Copy(dst, src); err != nil </span><span class="cov0" title="0">{
+                return err
+        }</span>
+
+        <span class="cov0" title="0">return nil</span>
+}
+
+// processDocument 处理文档（解析、提取元数据等）
+func (s *documentService) processDocument(documentID string) <span class="cov0" title="0">{
+        log.Printf("DEBUG: 进入processDocument函数 - 文档ID: %s\n", documentID)
+        ctx := context.Background()
+
+        // 获取文档信息
+        log.Printf("DEBUG: 获取文档信息 - 文档ID: %s\n", documentID)
+        document, err := s.documentRepo.GetByID(ctx, documentID)
+        if err != nil </span><span class="cov0" title="0">{
+                log.Printf("DEBUG: 获取文档信息失败 - 文档ID: %s, 错误: %v\n", documentID, err)
+                return
+        }</span>
+        <span class="cov0" title="0">log.Printf("DEBUG: 成功获取文档信息 - 文档ID: %s, 名称: %s, 版本: %s, 状态: %s\n", documentID, document.Name, document.Version, document.Status)
+
+        // 解析文档
+        log.Printf("DEBUG: 开始解析文档 - 文档ID: %s, 文件路径: %s, 类型: %s\n", documentID, document.FilePath, document.Type)
+        content, metadata, err := s.parserService.ParseDocument(ctx, document.FilePath, document.Type)
+        if err != nil </span><span class="cov0" title="0">{
+                log.Printf("DEBUG: 解析文档失败 - 文档ID: %s, 错误: %v\n", documentID, err)
+                // 更新文档状态为失败
+                s.documentRepo.Update(ctx, documentID, map[string]interface{}{
+                        "status": model.DocumentStatusFailed,
+                })
+                s.versionRepo.UpdateStatus(ctx, documentID, document.Version, model.DocumentStatusFailed)
+                return
+        }</span>
+        <span class="cov0" title="0">log.Printf("DEBUG: 文档解析成功 - 文档ID: %s, 内容长度: %d\n", documentID, len(content))
+
+        // 更新文档内容
+        log.Printf("DEBUG: 更新文档内容和状态 - 文档ID: %s\n", documentID)
+        s.documentRepo.Update(ctx, documentID, map[string]interface{}{
+                "content": content,
+                "status":  model.DocumentStatusCompleted,
+        })
+
+        // 更新文档版本内容
+        log.Printf("DEBUG: 更新文档版本内容和状态 - 文档ID: %s, 版本: %s\n", documentID, document.Version)
+        s.versionRepo.UpdateContent(ctx, documentID, document.Version, content, model.DocumentStatusCompleted)
+
+        // 保存元数据
+        if len(metadata) &gt; 0 </span><span class="cov0" title="0">{
+                log.Printf("DEBUG: 保存文档元数据 - 文档ID: %s\n", documentID)
+                docMetadata := &amp;model.DocumentMetadata{
+                        ID:         uuid.New().String(),
+                        DocumentID: documentID,
+                        Metadata:   metadata,
+                        CreatedAt:  time.Now(),
+                        UpdatedAt:  time.Now(),
+                }
+                s.metadataRepo.Create(ctx, docMetadata)
+        }</span>
+        <span class="cov0" title="0">log.Printf("DEBUG: 文档处理完成 - 文档ID: %s\n", documentID)</span>
+}
+
+// processDocumentWithFile 处理带指定文件路径的文档（用于版本处理）
+func (s *documentService) processDocumentWithFile(documentID, version, filePath string) <span class="cov0" title="0">{
+        log.Printf("DEBUG: 进入processDocumentWithFile函数 - 文档ID: %s, 版本: %s, 文件路径: %s\n", documentID, version, filePath)
+        ctx := context.Background()
+
+        // 获取文档信息
+        log.Printf("DEBUG: 获取文档信息 - 文档ID: %s\n", documentID)
+        document, err := s.documentRepo.GetByID(ctx, documentID)
+        if err != nil </span><span class="cov0" title="0">{
+                log.Printf("DEBUG: 获取文档信息失败 - 文档ID: %s, 错误: %v\n", documentID, err)
+                return
+        }</span>
+        <span class="cov0" title="0">log.Printf("DEBUG: 成功获取文档信息 - 文档ID: %s, 名称: %s, 版本: %s, 状态: %s\n", documentID, document.Name, document.Version, document.Status)
+
+        // 解析文档
+        log.Printf("DEBUG: 开始解析文档 - 文档ID: %s, 文件路径: %s, 类型: %s\n", documentID, filePath, document.Type)
+        content, metadata, err := s.parserService.ParseDocument(ctx, filePath, document.Type)
+        if err != nil </span><span class="cov0" title="0">{
+                log.Printf("DEBUG: 解析文档失败 - 文档ID: %s, 错误: %v\n", documentID, err)
+                // 更新文档状态为失败
+                s.documentRepo.Update(ctx, documentID, map[string]interface{}{
+                        "status": model.DocumentStatusFailed,
+                })
+                s.versionRepo.UpdateStatus(ctx, documentID, version, model.DocumentStatusFailed)
+                return
+        }</span>
+        <span class="cov0" title="0">log.Printf("DEBUG: 文档解析成功 - 文档ID: %s, 内容长度: %d\n", documentID, len(content))
+
+        // 更新文档内容
+        log.Printf("DEBUG: 更新文档内容和状态 - 文档ID: %s\n", documentID)
+        s.documentRepo.Update(ctx, documentID, map[string]interface{}{
+                "content": content,
+                "status":  model.DocumentStatusCompleted,
+        })
+
+        // 更新文档版本内容
+        log.Printf("DEBUG: 更新文档版本内容和状态 - 文档ID: %s, 版本: %s\n", documentID, version)
+        s.versionRepo.UpdateContent(ctx, documentID, version, content, model.DocumentStatusCompleted)
+
+        // 保存元数据
+        if len(metadata) &gt; 0 </span><span class="cov0" title="0">{
+                log.Printf("DEBUG: 保存文档元数据 - 文档ID: %s\n", documentID)
+                docMetadata := &amp;model.DocumentMetadata{
+                        ID:         uuid.New().String(),
+                        DocumentID: documentID,
+                        Metadata:   metadata,
+                        CreatedAt:  time.Now(),
+                        UpdatedAt:  time.Now(),
+                }
+                s.metadataRepo.Create(ctx, docMetadata)
+        }</span>
+        <span class="cov0" title="0">log.Printf("DEBUG: 文档处理完成 - 文档ID: %s, 版本: %s\n", documentID, version)</span>
+}
+
+// isValidDocumentType 验证文档类型是否有效
+func isValidDocumentType(docType model.DocumentType) bool <span class="cov8" title="1">{
+        switch docType </span>{
+        case model.DocumentTypeMarkdown,
+                model.DocumentTypePDF,
+                model.DocumentTypeDocx,
+                model.DocumentTypeSwagger,
+                model.DocumentTypeOpenAPI,
+                model.DocumentTypeJavaDoc:<span class="cov8" title="1">
+                return true</span>
+        default:<span class="cov8" title="1">
+                return false</span>
+        }
+}
+
+// StorageService 存储服务接口
+type StorageService interface {
+        SaveFile(ctx context.Context, file *multipart.FileHeader, path string) error
+        DeleteFile(ctx context.Context, path string) error
+        GetFile(ctx context.Context, path string) ([]byte, error)
+}
+</pre>
+		
+		<pre class="file" id="file3" style="display: none">package service
+
+import (
+        "context"
+        "fmt"
+        "os"
+        "path/filepath"
+        "strings"
+
+        "github.com/UniverseHappiness/LAST-doc/internal/model"
+)
+
+// DocumentParserService 解析服务接口
+type DocumentParserService interface {
+        ParseDocument(ctx context.Context, filePath string, docType model.DocumentType) (string, map[string]interface{}, error)
+}
+
+// parserService 解析服务实现
+type parserService struct {
+        parsers map[model.DocumentType]DocumentParser
+}
+
+// NewParserService 创建解析服务实例
+func NewParserService() DocumentParserService <span class="cov8" title="1">{
+        service := &amp;parserService{
+                parsers: make(map[model.DocumentType]DocumentParser),
+        }
+
+        // 注册各种文档类型的解析器
+        service.RegisterParser(model.DocumentTypeMarkdown, NewMarkdownParser())
+        service.RegisterParser(model.DocumentTypePDF, NewPDFParser())
+        service.RegisterParser(model.DocumentTypeDocx, NewDocxParser())
+        service.RegisterParser(model.DocumentTypeSwagger, NewSwaggerParser())
+        service.RegisterParser(model.DocumentTypeOpenAPI, NewOpenAPIParser())
+        service.RegisterParser(model.DocumentTypeJavaDoc, NewJavaDocParser())
+
+        return service
+}</span>
+
+// RegisterParser 注册文档解析器
+func (s *parserService) RegisterParser(docType model.DocumentType, parser DocumentParser) <span class="cov8" title="1">{
+        s.parsers[docType] = parser
+}</span>
+
+// ParseDocument 解析文档
+func (s *parserService) ParseDocument(ctx context.Context, filePath string, docType model.DocumentType) (string, map[string]interface{}, error) <span class="cov0" title="0">{
+        parser, ok := s.parsers[docType]
+        if !ok </span><span class="cov0" title="0">{
+                return "", nil, fmt.Errorf("unsupported document type: %s", docType)
+        }</span>
+
+        <span class="cov0" title="0">return parser.Parse(ctx, filePath)</span>
+}
+
+// DocumentParser 文档解析器接口
+type DocumentParser interface {
+        Parse(ctx context.Context, filePath string) (string, map[string]interface{}, error)
+        SupportedExtensions() []string
+}
+
+// markdownParser Markdown解析器
+type markdownParser struct{}
+
+// NewMarkdownParser 创建Markdown解析器
+func NewMarkdownParser() DocumentParser <span class="cov8" title="1">{
+        return &amp;markdownParser{}
+}</span>
+
+// Parse 解析Markdown文档
+func (p *markdownParser) Parse(ctx context.Context, filePath string) (string, map[string]interface{}, error) <span class="cov0" title="0">{
+        data, err := os.ReadFile(filePath)
+        if err != nil </span><span class="cov0" title="0">{
+                return "", nil, fmt.Errorf("failed to read markdown file: %v", err)
+        }</span>
+
+        <span class="cov0" title="0">content := string(data)
+        metadata := extractMarkdownMetadata(content)
+
+        return content, metadata, nil</span>
+}
+
+// SupportedExtensions 返回支持的文件扩展名
+func (p *markdownParser) SupportedExtensions() []string <span class="cov8" title="1">{
+        return []string{".md", ".markdown"}
+}</span>
+
+// extractMarkdownMetadata 提取Markdown元数据
+func extractMarkdownMetadata(content string) map[string]interface{} <span class="cov0" title="0">{
+        metadata := make(map[string]interface{})
+
+        lines := strings.Split(content, "\n")
+
+        // 提取标题
+        for _, line := range lines </span><span class="cov0" title="0">{
+                if strings.HasPrefix(line, "# ") </span><span class="cov0" title="0">{
+                        metadata["title"] = strings.TrimSpace(line[2:])
+                        break</span>
+                }
+        }
+
+        // 统计字数
+        <span class="cov0" title="0">metadata["word_count"] = len(strings.Fields(content))
+
+        // 统计代码块数量
+        codeBlockCount := 0
+        for _, line := range lines </span><span class="cov0" title="0">{
+                if strings.TrimSpace(line) == "```" </span><span class="cov0" title="0">{
+                        codeBlockCount++
+                }</span>
+        }
+        <span class="cov0" title="0">metadata["code_block_count"] = codeBlockCount / 2
+
+        return metadata</span>
+}
+
+// pdfParser PDF解析器
+type pdfParser struct{}
+
+// NewPDFParser 创建PDF解析器
+func NewPDFParser() DocumentParser <span class="cov8" title="1">{
+        return &amp;pdfParser{}
+}</span>
+
+// Parse 解析PDF文档
+func (p *pdfParser) Parse(ctx context.Context, filePath string) (string, map[string]interface{}, error) <span class="cov0" title="0">{
+        // 这里应该使用PDF解析库，如github.com/ledongthuc/pdf
+        // 为了简化，这里只返回模拟数据
+        data, err := os.ReadFile(filePath)
+        if err != nil </span><span class="cov0" title="0">{
+                return "", nil, fmt.Errorf("failed to read PDF file: %v", err)
+        }</span>
+
+        // 模拟提取文本内容
+        <span class="cov0" title="0">content := fmt.Sprintf("PDF文档内容（大小：%d字节）", len(data))
+        metadata := map[string]interface{}{
+                "file_size": len(data),
+                "type":      "pdf",
+                "pages":     10, // 模拟页数
+        }
+
+        return content, metadata, nil</span>
+}
+
+// SupportedExtensions 返回支持的文件扩展名
+func (p *pdfParser) SupportedExtensions() []string <span class="cov8" title="1">{
+        return []string{".pdf"}
+}</span>
+
+// docxParser DOCX解析器
+type docxParser struct{}
+
+// NewDocxParser 创建DOCX解析器
+func NewDocxParser() DocumentParser <span class="cov8" title="1">{
+        return &amp;docxParser{}
+}</span>
+
+// Parse 解析DOCX文档
+func (p *docxParser) Parse(ctx context.Context, filePath string) (string, map[string]interface{}, error) <span class="cov0" title="0">{
+        // 这里应该使用DOCX解析库，如github.com/unidoc/unioffice
+        // 为了简化，这里只返回模拟数据
+        data, err := os.ReadFile(filePath)
+        if err != nil </span><span class="cov0" title="0">{
+                return "", nil, fmt.Errorf("failed to read DOCX file: %v", err)
+        }</span>
+
+        // 模拟提取文本内容
+        <span class="cov0" title="0">content := fmt.Sprintf("DOCX文档内容（大小：%d字节）", len(data))
+        metadata := map[string]interface{}{
+                "file_size": len(data),
+                "type":      "docx",
+                "pages":     5, // 模拟页数
+        }
+
+        return content, metadata, nil</span>
+}
+
+// SupportedExtensions 返回支持的文件扩展名
+func (p *docxParser) SupportedExtensions() []string <span class="cov8" title="1">{
+        return []string{".docx", ".doc"}
+}</span>
+
+// swaggerParser Swagger解析器
+type swaggerParser struct{}
+
+// NewSwaggerParser 创建Swagger解析器
+func NewSwaggerParser() DocumentParser <span class="cov8" title="1">{
+        return &amp;swaggerParser{}
+}</span>
+
+// Parse 解析Swagger文档
+func (p *swaggerParser) Parse(ctx context.Context, filePath string) (string, map[string]interface{}, error) <span class="cov0" title="0">{
+        data, err := os.ReadFile(filePath)
+        if err != nil </span><span class="cov0" title="0">{
+                return "", nil, fmt.Errorf("failed to read Swagger file: %v", err)
+        }</span>
+
+        <span class="cov0" title="0">content := string(data)
+        metadata := extractSwaggerMetadata(content)
+
+        return content, metadata, nil</span>
+}
+
+// SupportedExtensions 返回支持的文件扩展名
+func (p *swaggerParser) SupportedExtensions() []string <span class="cov8" title="1">{
+        return []string{".json", ".yaml", ".yml"}
+}</span>
+
+// extractSwaggerMetadata 提取Swagger元数据
+func extractSwaggerMetadata(content string) map[string]interface{} <span class="cov0" title="0">{
+        metadata := make(map[string]interface{})
+
+        // 简单的元数据提取，实际应用中应该使用Swagger/OpenAPI解析库
+        if strings.Contains(content, "\"swagger\"") </span><span class="cov0" title="0">{
+                metadata["spec_version"] = "swagger"
+        }</span> else<span class="cov0" title="0"> if strings.Contains(content, "\"openapi\"") </span><span class="cov0" title="0">{
+                metadata["spec_version"] = "openapi"
+        }</span>
+
+        <span class="cov0" title="0">if strings.Contains(content, "\"info\"") </span><span class="cov0" title="0">{
+                metadata["has_info"] = true
+        }</span>
+
+        <span class="cov0" title="0">if strings.Contains(content, "\"paths\"") </span><span class="cov0" title="0">{
+                metadata["has_paths"] = true
+        }</span>
+
+        <span class="cov0" title="0">return metadata</span>
+}
+
+// openAPIParser OpenAPI解析器
+type openAPIParser struct{}
+
+// NewOpenAPIParser 创建OpenAPI解析器
+func NewOpenAPIParser() DocumentParser <span class="cov8" title="1">{
+        return &amp;openAPIParser{}
+}</span>
+
+// Parse 解析OpenAPI文档
+func (p *openAPIParser) Parse(ctx context.Context, filePath string) (string, map[string]interface{}, error) <span class="cov0" title="0">{
+        // OpenAPI和Swagger格式类似，可以使用相同的解析逻辑
+        swaggerParser := NewSwaggerParser()
+        return swaggerParser.Parse(ctx, filePath)
+}</span>
+
+// SupportedExtensions 返回支持的文件扩展名
+func (p *openAPIParser) SupportedExtensions() []string <span class="cov8" title="1">{
+        return []string{".json", ".yaml", ".yml"}
+}</span>
+
+// javaDocParser JavaDoc解析器
+type javaDocParser struct{}
+
+// NewJavaDocParser 创建JavaDoc解析器
+func NewJavaDocParser() DocumentParser <span class="cov8" title="1">{
+        return &amp;javaDocParser{}
+}</span>
+
+// Parse 解析JavaDoc文档
+func (p *javaDocParser) Parse(ctx context.Context, filePath string) (string, map[string]interface{}, error) <span class="cov0" title="0">{
+        data, err := os.ReadFile(filePath)
+        if err != nil </span><span class="cov0" title="0">{
+                return "", nil, fmt.Errorf("failed to read JavaDoc file: %v", err)
+        }</span>
+
+        <span class="cov0" title="0">content := string(data)
+        metadata := extractJavaDocMetadata(content)
+
+        return content, metadata, nil</span>
+}
+
+// SupportedExtensions 返回支持的文件扩展名
+func (p *javaDocParser) SupportedExtensions() []string <span class="cov8" title="1">{
+        return []string{".html", ".htm"}
+}</span>
+
+// extractJavaDocMetadata 提取JavaDoc元数据
+func extractJavaDocMetadata(content string) map[string]interface{} <span class="cov0" title="0">{
+        metadata := make(map[string]interface{})
+
+        // 简单的JavaDoc元数据提取
+        classCount := strings.Count(content, "class=\"")
+        methodCount := strings.Count(content, "method=\"")
+
+        metadata["class_count"] = classCount
+        metadata["method_count"] = methodCount
+
+        return metadata
+}</span>
+
+// GetParserByExtension 根据文件扩展名获取解析器
+func GetParserByExtension(filePath string) DocumentParser <span class="cov0" title="0">{
+        ext := strings.ToLower(filepath.Ext(filePath))
+
+        switch ext </span>{
+        case ".md", ".markdown":<span class="cov0" title="0">
+                return NewMarkdownParser()</span>
+        case ".pdf":<span class="cov0" title="0">
+                return NewPDFParser()</span>
+        case ".docx", ".doc":<span class="cov0" title="0">
+                return NewDocxParser()</span>
+        case ".json", ".yaml", ".yml":<span class="cov0" title="0">
+                // 简单判断是Swagger还是OpenAPI或普通JSON/YAML
+                if data, err := os.ReadFile(filePath); err == nil </span><span class="cov0" title="0">{
+                        content := string(data)
+                        if strings.Contains(content, "\"swagger\"") || strings.Contains(content, "\"openapi\"") </span><span class="cov0" title="0">{
+                                return NewSwaggerParser()
+                        }</span>
+                }
+                <span class="cov0" title="0">return nil</span>
+        case ".html", ".htm":<span class="cov0" title="0">
+                return NewJavaDocParser()</span>
+        default:<span class="cov0" title="0">
+                return nil</span>
+        }
+}
+</pre>
+		
+		<pre class="file" id="file4" style="display: none">package service
+
+import (
+        "context"
+        "fmt"
+        "io"
+        "mime/multipart"
+        "os"
+        "path/filepath"
+        "strings"
+)
+
+// LocalStorageService 本地存储服务实现
+type LocalStorageService struct {
+        baseDir string
+}
+
+// NewLocalStorageService 创建本地存储服务实例
+func NewLocalStorageService(baseDir string) *LocalStorageService <span class="cov8" title="1">{
+        // 确保基础目录存在
+        if err := os.MkdirAll(baseDir, 0755); err != nil </span><span class="cov0" title="0">{
+                panic(fmt.Sprintf("Failed to create base storage directory: %v", err))</span>
+        }
+        <span class="cov8" title="1">return &amp;LocalStorageService{
+                baseDir: baseDir,
+        }</span>
+}
+
+// SaveFile 保存文件
+func (s *LocalStorageService) SaveFile(ctx context.Context, file *multipart.FileHeader, path string) error <span class="cov0" title="0">{
+        // 确保目标目录存在
+        dir := filepath.Dir(path)
+        if err := os.MkdirAll(dir, 0755); err != nil </span><span class="cov0" title="0">{
+                return fmt.Errorf("failed to create directory: %v", err)
+        }</span>
+
+        // 打开源文件
+        <span class="cov0" title="0">src, err := file.Open()
+        if err != nil </span><span class="cov0" title="0">{
+                return fmt.Errorf("failed to open source file: %v", err)
+        }</span>
+        <span class="cov0" title="0">defer src.Close()
+
+        // 创建目标文件
+        dst, err := os.Create(path)
+        if err != nil </span><span class="cov0" title="0">{
+                return fmt.Errorf("failed to create destination file: %v", err)
+        }</span>
+        <span class="cov0" title="0">defer dst.Close()
+
+        // 复制文件内容
+        if _, err = io.Copy(dst, src); err != nil </span><span class="cov0" title="0">{
+                return fmt.Errorf("failed to copy file content: %v", err)
+        }</span>
+
+        <span class="cov0" title="0">return nil</span>
+}
+
+// DeleteFile 删除文件
+func (s *LocalStorageService) DeleteFile(ctx context.Context, path string) error <span class="cov0" title="0">{
+        if err := os.Remove(path); err != nil &amp;&amp; !os.IsNotExist(err) </span><span class="cov0" title="0">{
+                return fmt.Errorf("failed to delete file: %v", err)
+        }</span>
+        <span class="cov0" title="0">return nil</span>
+}
+
+// GetFile 获取文件内容
+func (s *LocalStorageService) GetFile(ctx context.Context, path string) ([]byte, error) <span class="cov0" title="0">{
+        data, err := os.ReadFile(path)
+        if err != nil </span><span class="cov0" title="0">{
+                return nil, fmt.Errorf("failed to read file: %v", err)
+        }</span>
+        <span class="cov0" title="0">return data, nil</span>
+}
+
+// GenerateFilePath 生成文件存储路径
+func (s *LocalStorageService) GenerateFilePath(documentID, fileName string) string <span class="cov0" title="0">{
+        // 清理文件名，移除特殊字符
+        cleanFileName := strings.Map(func(r rune) rune </span><span class="cov0" title="0">{
+                if r &gt;= 'a' &amp;&amp; r &lt;= 'z' || r &gt;= 'A' &amp;&amp; r &lt;= 'Z' || r &gt;= '0' &amp;&amp; r &lt;= '9' || r == '-' || r == '_' || r == '.' </span><span class="cov0" title="0">{
+                        return r
+                }</span>
+                <span class="cov0" title="0">return '_'</span>
+        }, fileName)
+
+        <span class="cov0" title="0">return filepath.Join(s.baseDir, documentID, cleanFileName)</span>
+}
+
+// GetBaseDir 获取基础存储目录
+func (s *LocalStorageService) GetBaseDir() string <span class="cov8" title="1">{
+        return s.baseDir
+}</span>
+
+// FileExists 检查文件是否存在
+func (s *LocalStorageService) FileExists(ctx context.Context, path string) bool <span class="cov0" title="0">{
+        _, err := os.Stat(path)
+        return !os.IsNotExist(err)
+}</span>
+
+// CopyFile 复制文件
+func (s *LocalStorageService) CopyFile(ctx context.Context, srcPath, dstPath string) error <span class="cov0" title="0">{
+        // 确保目标目录存在
+        dir := filepath.Dir(dstPath)
+        if err := os.MkdirAll(dir, 0755); err != nil </span><span class="cov0" title="0">{
+                return fmt.Errorf("failed to create directory: %v", err)
+        }</span>
+
+        // 打开源文件
+        <span class="cov0" title="0">src, err := os.Open(srcPath)
+        if err != nil </span><span class="cov0" title="0">{
+                return fmt.Errorf("failed to open source file: %v", err)
+        }</span>
+        <span class="cov0" title="0">defer src.Close()
+
+        // 创建目标文件
+        dst, err := os.Create(dstPath)
+        if err != nil </span><span class="cov0" title="0">{
+                return fmt.Errorf("failed to create destination file: %v", err)
+        }</span>
+        <span class="cov0" title="0">defer dst.Close()
+
+        // 复制文件内容
+        if _, err = io.Copy(dst, src); err != nil </span><span class="cov0" title="0">{
+                return fmt.Errorf("failed to copy file content: %v", err)
+        }</span>
+
+        <span class="cov0" title="0">return nil</span>
+}
+
+// MoveFile 移动文件
+func (s *LocalStorageService) MoveFile(ctx context.Context, srcPath, dstPath string) error <span class="cov0" title="0">{
+        // 确保目标目录存在
+        dir := filepath.Dir(dstPath)
+        if err := os.MkdirAll(dir, 0755); err != nil </span><span class="cov0" title="0">{
+                return fmt.Errorf("failed to create directory: %v", err)
+        }</span>
+
+        // 移动文件
+        <span class="cov0" title="0">if err := os.Rename(srcPath, dstPath); err != nil </span><span class="cov0" title="0">{
+                return fmt.Errorf("failed to move file: %v", err)
+        }</span>
+
+        <span class="cov0" title="0">return nil</span>
+}
+
+// GetFileSize 获取文件大小
+func (s *LocalStorageService) GetFileSize(ctx context.Context, path string) (int64, error) <span class="cov0" title="0">{
+        info, err := os.Stat(path)
+        if err != nil </span><span class="cov0" title="0">{
+                return 0, fmt.Errorf("failed to get file info: %v", err)
+        }</span>
+        <span class="cov0" title="0">return info.Size(), nil</span>
+}
+</pre>
+		
+		</div>
+	</body>
+	<script>
+	(function() {
+		var files = document.getElementById('files');
+		var visible;
+		files.addEventListener('change', onChange, false);
+		function select(part) {
+			if (visible)
+				visible.style.display = 'none';
+			visible = document.getElementById(part);
+			if (!visible)
+				return;
+			files.value = part;
+			visible.style.display = 'block';
+			location.hash = part;
+		}
+		function onChange() {
+			select(files.value);
+			window.scrollTo(0, 0);
+		}
+		if (location.hash != "") {
+			select(location.hash.substr(1));
+		}
+		if (!visible) {
+			select("file0");
+		}
+	})();
+	</script>
+</html>
