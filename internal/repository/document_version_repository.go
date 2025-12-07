@@ -144,6 +144,18 @@ func (r *documentVersionRepository) UpdateStatus(ctx context.Context, documentID
 
 // Delete 删除文档版本
 func (r *documentVersionRepository) Delete(ctx context.Context, id string) error {
+	// 获取文档版本信息，以便删除对应的搜索索引
+	var version model.DocumentVersion
+	if err := r.db.WithContext(ctx).Where("id = ?", id).First(&version).Error; err != nil {
+		return err
+	}
+
+	// 删除对应的搜索索引
+	if err := r.db.WithContext(ctx).Table("search_indices").Where("document_id = ? AND version = ?", version.DocumentID, version.Version).Delete(nil).Error; err != nil {
+		return err
+	}
+
+	// 删除文档版本
 	return r.db.WithContext(ctx).
 		Where("id = ?", id).
 		Delete(&model.DocumentVersion{}).Error
@@ -151,6 +163,12 @@ func (r *documentVersionRepository) Delete(ctx context.Context, id string) error
 
 // DeleteByDocumentID 根据文档ID删除所有版本
 func (r *documentVersionRepository) DeleteByDocumentID(ctx context.Context, documentID string) error {
+	// 先删除所有版本的搜索索引
+	if err := r.db.WithContext(ctx).Table("search_indices").Where("document_id = ?", documentID).Delete(nil).Error; err != nil {
+		return err
+	}
+
+	// 然后删除所有文档版本
 	return r.db.WithContext(ctx).
 		Where("document_id = ?", documentID).
 		Delete(&model.DocumentVersion{}).Error

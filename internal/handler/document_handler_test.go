@@ -152,6 +152,14 @@ func (m *MockDocumentService) UpdateDocument(ctx context.Context, id string, upd
 	return fmt.Errorf("文档不存在")
 }
 
+func (m *MockDocumentService) BuildDocumentIndex(ctx context.Context, documentID, version string) error {
+	// 模拟构建文档索引
+	if _, exists := m.documents[documentID]; !exists {
+		return fmt.Errorf("文档不存在")
+	}
+	return nil
+}
+
 // TestUploadDocument 测试上传文档功能
 func TestUploadDocument(t *testing.T) {
 	// 设置Gin为测试模式

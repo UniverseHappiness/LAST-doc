@@ -489,6 +489,26 @@ func (h *DocumentHandler) GetDocumentMetadata(c *gin.Context) {
 	})
 }
 
+// BuildAllMissingIndexes 为所有缺少索引的文档构建搜索索引
+func (h *DocumentHandler) BuildAllMissingIndexes(c *gin.Context) {
+	log.Printf("DEBUG: 开始为所有缺少索引的文档构建搜索索引")
+
+	if err := h.documentService.BuildAllMissingIndexes(context.Background()); err != nil {
+		log.Printf("DEBUG: 构建搜索索引失败: %v", err)
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"code":    500,
+			"message": "构建搜索索引失败: " + err.Error(),
+		})
+		return
+	}
+
+	log.Printf("DEBUG: 成功为所有缺少索引的文档构建搜索索引")
+	c.JSON(http.StatusOK, gin.H{
+		"code":    200,
+		"message": "搜索索引构建成功",
+	})
+}
+
 // isValidFileType 验证文件类型是否与文档类型匹配
 func isValidFileType(filename string, docType model.DocumentType) bool {
 	dotIndex := strings.LastIndex(filename, ".")

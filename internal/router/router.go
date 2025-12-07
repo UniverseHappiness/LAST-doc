@@ -9,12 +9,14 @@ import (
 // Router 路由器
 type Router struct {
 	documentHandler *handler.DocumentHandler
+	searchHandler   *handler.SearchHandler
 }
 
 // NewRouter 创建路由器实例
-func NewRouter(documentHandler *handler.DocumentHandler) *Router {
+func NewRouter(documentHandler *handler.DocumentHandler, searchHandler *handler.SearchHandler) *Router {
 	return &Router{
 		documentHandler: documentHandler,
+		searchHandler:   searchHandler,
 	}
 }
 
@@ -74,6 +76,31 @@ func (r *Router) SetupRoutes() *gin.Engine {
 
 			// 下载文档版本
 			documents.GET("/:id/versions/:version/download", r.documentHandler.DownloadDocumentVersion)
+
+			// 为所有缺少索引的文档构建搜索索引
+			documents.POST("/build-missing-indexes", r.documentHandler.BuildAllMissingIndexes)
+		}
+
+		// 搜索路由
+		search := v1.Group("/search")
+		{
+			// 搜索文档 (POST方式)
+			search.POST("", r.searchHandler.Search)
+
+			// 搜索文档 (GET方式)
+			search.GET("", r.searchHandler.SearchGet)
+
+			// 构建文档索引
+			search.POST("/documents/:id/versions/:version/index", r.searchHandler.BuildIndex)
+
+			// 获取索引状态
+			search.GET("/documents/:id/index/status", r.searchHandler.GetIndexingStatus)
+
+			// 删除索引
+			search.DELETE("/documents/:id/index", r.searchHandler.DeleteIndex)
+
+			// 删除指定版本的索引
+			search.DELETE("/documents/:id/versions/:version/index", r.searchHandler.DeleteIndexByVersion)
 		}
 	}
 

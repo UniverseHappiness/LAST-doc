@@ -78,8 +78,8 @@ temp/
 storage/
 
 # Cospec and Roo directories (local development)
-.cospec/
-.roo/
+# .cospec/
+# .roo/
 
 # Database files
 *.db

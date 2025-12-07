@@ -120,6 +120,12 @@ func (r *documentRepository) Update(ctx context.Context, id string, updates map[
 
 // Delete 删除文档
 func (r *documentRepository) Delete(ctx context.Context, id string) error {
+	// 先删除文档的所有搜索索引
+	if err := r.db.WithContext(ctx).Table("search_indices").Where("document_id = ?", id).Delete(nil).Error; err != nil {
+		return err
+	}
+
+	// 然后删除文档
 	return r.db.WithContext(ctx).Where("id = ?", id).Delete(&model.Document{}).Error
 }
 

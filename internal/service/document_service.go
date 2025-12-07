@@ -29,6 +29,8 @@ type DocumentService interface {
 	GetDocumentVersionCount(ctx context.Context, documentID string) (int64, error)
 	GetDocumentMetadata(ctx context.Context, documentID string) (map[string]interface{}, error)
 	UpdateDocument(ctx context.Context, id string, updates map[string]interface{}) error
+	BuildDocumentIndex(ctx context.Context, documentID, version string) error
+	BuildAllMissingIndexes(ctx context.Context) error
 }
 
 // documentService 文档服务实现
@@ -38,6 +40,7 @@ type documentService struct {
 	metadataRepo   repository.DocumentMetadataRepository
 	storageService StorageService
 	parserService  DocumentParserService
+	searchService  SearchService
 	baseStorageDir string
 }
 
@@ -48,6 +51,7 @@ func NewDocumentService(
 	metadataRepo repository.DocumentMetadataRepository,
 	storageService StorageService,
 	parserService DocumentParserService,
+	searchService SearchService,
 	baseStorageDir string,
 ) DocumentService {
 	return &documentService{
@@ -56,6 +60,7 @@ func NewDocumentService(
 		metadataRepo:   metadataRepo,
 		storageService: storageService,
 		parserService:  parserService,
+		searchService:  searchService,
 		baseStorageDir: baseStorageDir,
 	}
 }
@@ -431,6 +436,16 @@ func (s *documentService) processDocumentWithFile(documentID, version, filePath 
 		}
 		s.metadataRepo.Create(ctx, docMetadata)
 	}
+
+	// 构建搜索索引（这是修复搜索功能的关键）
+	log.Printf("DEBUG: 开始构建搜索索引 - 文档ID: %s, 版本: %s\n", documentID, version)
+	if err := s.BuildDocumentIndex(ctx, documentID, version); err != nil {
+		log.Printf("DEBUG: 构建搜索索引失败 - 文档ID: %s, 版本: %s, 错误: %v\n", documentID, version, err)
+		// 不返回错误，因为文档解析已经成功，只是索引构建失败
+	} else {
+		log.Printf("DEBUG: 搜索索引构建成功 - 文档ID: %s, 版本: %s\n", documentID, version)
+	}
+
 	log.Printf("DEBUG: 文档处理完成 - 文档ID: %s, 版本: %s\n", documentID, version)
 }
 
@@ -475,6 +490,79 @@ func (s *documentService) detectFileTypeFromFile(filePath string) model.Document
 	default:
 		return model.DocumentTypeMarkdown // 默认返回markdown类型
 	}
+}
+
+// BuildDocumentIndex 构建文档索引
+func (s *documentService) BuildDocumentIndex(ctx context.Context, documentID string, version string) error {
+	log.Printf("DEBUG: 开始构建文档索引 - 文档ID: %s, 版本: %s\n", documentID, version)
+
+	// 调用搜索服务构建索引
+	if err := s.searchService.BuildIndex(ctx, documentID, version); err != nil {
+		log.Printf("DEBUG: 构建文档索引失败 - 文档ID: %s, 版本: %s, 错误: %v\n", documentID, version, err)
+		return fmt.Errorf("failed to build document index: %v", err)
+	}
+
+	log.Printf("DEBUG: 文档索引构建成功 - 文档ID: %s, 版本: %s\n", documentID, version)
+	return nil
+}
+
+// BuildAllMissingIndexes 为所有缺少索引的文档版本构建搜索索引
+func (s *documentService) BuildAllMissingIndexes(ctx context.Context) error {
+	log.Printf("DEBUG: 开始为所有缺少索引的文档版本构建搜索索引")
+
+	// 获取所有文档，然后筛选出状态为completed的版本
+	documents, _, err := s.documentRepo.List(ctx, 1, 1000, map[string]interface{}{})
+	if err != nil {
+		return fmt.Errorf("failed to get documents: %v", err)
+	}
+
+	var versions []*model.DocumentVersion
+	for _, doc := range documents {
+		docVersions, err := s.versionRepo.GetByDocumentID(ctx, doc.ID)
+		if err != nil {
+			log.Printf("DEBUG: 获取文档版本失败 - 文档ID: %s, 错误: %v", doc.ID, err)
+			continue
+		}
+
+		// 筛选出状态为completed的版本
+		for _, version := range docVersions {
+			if version.Status == model.DocumentStatusCompleted {
+				versions = append(versions, version)
+			}
+		}
+	}
+
+	log.Printf("DEBUG: 找到 %d 个已完成的文档版本", len(versions))
+
+	successCount := 0
+	failCount := 0
+
+	for _, version := range versions {
+		// 检查是否已经有搜索索引
+		indexes, err := s.searchService.GetIndexingStatus(ctx, version.DocumentID)
+		if err != nil {
+			log.Printf("DEBUG: 检查文档索引状态失败 - 文档ID: %s, 版本: %s, 错误: %v", version.DocumentID, version.Version, err)
+			failCount++
+			continue
+		}
+
+		// 如果没有索引或索引数量为0，则构建索引
+		if indexedCount, ok := indexes["indexed"].(int64); !ok || indexedCount == 0 {
+			log.Printf("DEBUG: 为文档版本构建搜索索引 - 文档ID: %s, 版本: %s", version.DocumentID, version.Version)
+			if err := s.BuildDocumentIndex(ctx, version.DocumentID, version.Version); err != nil {
+				log.Printf("DEBUG: 构建搜索索引失败 - 文档ID: %s, 版本: %s, 错误: %v", version.DocumentID, version.Version, err)
+				failCount++
+			} else {
+				log.Printf("DEBUG: 成功构建搜索索引 - 文档ID: %s, 版本: %s", version.DocumentID, version.Version)
+				successCount++
+			}
+		} else {
+			log.Printf("DEBUG: 文档版本已有搜索索引 - 文档ID: %s, 版本: %s, 索引数量: %d", version.DocumentID, version.Version, indexedCount)
+		}
+	}
+
+	log.Printf("DEBUG: 搜索索引构建完成 - 成功: %d, 失败: %d", successCount, failCount)
+	return nil
 }
 
 // StorageService 存储服务接口

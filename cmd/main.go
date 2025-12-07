@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"strings"
 
 	// "path/filepath"
 
@@ -53,24 +54,35 @@ func main() {
 	documentRepo := repository.NewDocumentRepository(db)
 	versionRepo := repository.NewDocumentVersionRepository(db)
 	metadataRepo := repository.NewDocumentMetadataRepository(db)
+	searchIndexRepo := repository.NewSearchIndexRepository(db)
 
 	// 初始化服务
 	storageService := service.NewLocalStorageService(baseStorageDir)
 	parserService := service.NewParserService()
+	cacheService := service.NewMemoryCache()
+	searchService := service.NewSearchService(
+		searchIndexRepo,
+		documentRepo,
+		versionRepo,
+		cacheService,
+		true, // 启用索引
+	)
 	documentService := service.NewDocumentService(
 		documentRepo,
 		versionRepo,
 		metadataRepo,
 		storageService,
 		parserService,
+		searchService,
 		baseStorageDir,
 	)
 
 	// 初始化处理器
 	documentHandler := handler.NewDocumentHandler(documentService)
+	searchHandler := handler.NewSearchHandler(searchService)
 
 	// 初始化路由器
-	router := router.NewRouter(documentHandler)
+	router := router.NewRouter(documentHandler, searchHandler)
 	r := router.SetupRoutes()
 
 	// 启动服务器
@@ -96,7 +108,7 @@ func buildDSN(host, port, user, password, dbname string) string {
 
 // autoMigrate 自动迁移数据库表
 func autoMigrate(db *gorm.DB) error {
-	// 首先执行自动迁移
+	// 首先执行自动迁移（排除SearchIndex，因为包含pgvector类型）
 	err := db.AutoMigrate(
 		&model.Document{},
 		&model.DocumentVersion{},
@@ -106,10 +118,32 @@ func autoMigrate(db *gorm.DB) error {
 		return err
 	}
 
+	// 单独处理SearchIndex表迁移，避免pgvector类型问题
+	if err := db.AutoMigrate(&model.SearchIndex{}); err != nil {
+		// 如果是vector类型不存在的错误，忽略它
+		if !strings.Contains(err.Error(), "type \"vector\" does not exist") {
+			return err
+		}
+		log.Printf("Warning: pgvector extension not available, embedding column will not be created")
+	}
+	if err != nil {
+		return err
+	}
+
 	// 为document_versions表添加复合唯一约束
 	// 确保同一文档的版本号唯一
 	if err := addUniqueConstraint(db); err != nil {
 		return err
+	}
+
+	// 为搜索索引表添加必要的索引和触发器
+	if err := setupSearchIndices(db); err != nil {
+		// 如果是 pgvector 扩展未安装的错误，记录警告但继续执行
+		if strings.Contains(err.Error(), "type \"vector\" does not exist") {
+			log.Printf("Warning: pgvector extension is not installed. Vector search functionality will be disabled. Error: %v", err)
+		} else {
+			return err
+		}
 	}
 
 	return nil
@@ -233,5 +267,82 @@ func cleanDuplicateVersions(db *gorm.DB) error {
 	}
 
 	log.Println("重复数据清理完成")
+	return nil
+}
+
+// setupSearchIndices 设置搜索索引表的索引和触发器
+func setupSearchIndices(db *gorm.DB) error {
+	log.Println("正在设置搜索索引表...")
+
+	// 创建索引
+	if err := db.Exec(`
+		CREATE INDEX IF NOT EXISTS idx_search_indices_document_id ON search_indices(document_id);
+	`).Error; err != nil {
+		return fmt.Errorf("failed to create document_id index: %v", err)
+	}
+
+	if err := db.Exec(`
+		CREATE INDEX IF NOT EXISTS idx_search_indices_version ON search_indices(version);
+	`).Error; err != nil {
+		return fmt.Errorf("failed to create version index: %v", err)
+	}
+
+	if err := db.Exec(`
+		CREATE INDEX IF NOT EXISTS idx_search_indices_content_type ON search_indices(content_type);
+	`).Error; err != nil {
+		return fmt.Errorf("failed to create content_type index: %v", err)
+	}
+
+	if err := db.Exec(`
+		CREATE INDEX IF NOT EXISTS idx_search_indices_section ON search_indices(section);
+	`).Error; err != nil {
+		return fmt.Errorf("failed to create section index: %v", err)
+	}
+
+	if err := db.Exec(`
+		CREATE INDEX IF NOT EXISTS idx_search_indices_created_at ON search_indices(created_at);
+	`).Error; err != nil {
+		return fmt.Errorf("failed to create created_at index: %v", err)
+	}
+
+	// 创建全文搜索索引
+	if err := db.Exec(`
+		CREATE INDEX IF NOT EXISTS idx_search_indices_content_fts ON search_indices USING gin(to_tsvector('simple', content));
+	`).Error; err != nil {
+		return fmt.Errorf("failed to create full-text search index: %v", err)
+	}
+
+	// 注释掉复合唯一约束，允许同一文档的不同版本有相同的章节结构
+	// if err := db.Exec(`
+	// 	CREATE UNIQUE INDEX IF NOT EXISTS idx_search_indices_unique ON search_indices(document_id, version, content_type, section);
+	// `).Error; err != nil {
+	// 	return fmt.Errorf("failed to create unique constraint: %v", err)
+	// }
+
+	// 创建更新时间触发器函数
+	if err := db.Exec(`
+		CREATE OR REPLACE FUNCTION update_search_indices_updated_at()
+		RETURNS TRIGGER AS $$
+		BEGIN
+		    NEW.updated_at = CURRENT_TIMESTAMP;
+		    RETURN NEW;
+		END;
+		$$ language 'plpgsql';
+	`).Error; err != nil {
+		return fmt.Errorf("failed to create trigger function: %v", err)
+	}
+
+	// 创建触发器
+	if err := db.Exec(`
+		DROP TRIGGER IF EXISTS update_search_indices_updated_at ON search_indices;
+		CREATE TRIGGER update_search_indices_updated_at
+		    BEFORE UPDATE ON search_indices
+		    FOR EACH ROW
+		    EXECUTE FUNCTION update_search_indices_updated_at();
+	`).Error; err != nil {
+		return fmt.Errorf("failed to create trigger: %v", err)
+	}
+
+	log.Println("搜索索引表设置完成")
 	return nil
 }

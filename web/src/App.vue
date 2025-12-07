@@ -6,16 +6,24 @@
         <h4 class="mb-4">AI技术文档库</h4>
         <ul class="nav flex-column">
           <li class="nav-item mb-2">
-            <a class="nav-link" 
-               href="#" 
+            <a class="nav-link"
+               href="#"
                :class="{ active: currentView === 'list' }"
                @click="currentView = 'list'">
               <i class="bi bi-file-earmark-text me-2"></i>文档列表
             </a>
           </li>
           <li class="nav-item mb-2">
-            <a class="nav-link" 
-               href="#" 
+            <a class="nav-link"
+               href="#"
+               :class="{ active: currentView === 'search' }"
+               @click="currentView = 'search'">
+              <i class="bi bi-search me-2"></i>文档检索
+            </a>
+          </li>
+          <li class="nav-item mb-2">
+            <a class="nav-link"
+               href="#"
                :class="{ active: currentView === 'upload' }"
                @click="currentView = 'upload'">
               <i class="bi bi-cloud-upload me-2"></i>上传文档
@@ -85,6 +93,11 @@
           @view-document="viewDocument"
           @view-versions="viewDocumentVersions"
           @delete-document="deleteDocument"
+        />
+        
+        <!-- 文档检索视图 -->
+        <SearchView
+          v-if="currentView === 'search'"
         />
         
         <!-- 文档查看视图 -->
@@ -176,6 +189,7 @@ import DocumentEditView from './views/DocumentEditView.vue'
 import DocumentVersionView from './views/DocumentVersionView.vue'
 import UploadView from './views/UploadView.vue'
 import VersionManagementView from './views/VersionManagementView.vue'
+import SearchView from './views/SearchView.vue'
 import { useDocumentService } from './utils/documentService'
 
 export default {
@@ -186,7 +200,8 @@ export default {
     DocumentEditView,
     DocumentVersionView,
     UploadView,
-    VersionManagementView
+    VersionManagementView,
+    SearchView
   },
   setup() {
     const currentView = ref('list')

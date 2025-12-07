@@ -16,6 +16,9 @@ import (
 // MockDocumentService 是文档服务的模拟实现
 type MockDocumentService struct{}
 
+// MockSearchService 是搜索服务的模拟实现
+type MockSearchService struct{}
+
 func (m *MockDocumentService) UploadDocument(ctx context.Context, file *multipart.FileHeader, name, docType, version, library, description string, tags []string) (*model.Document, error) {
 	return &model.Document{
 		ID:       "test-id",
@@ -78,17 +81,67 @@ func (m *MockDocumentService) UpdateDocument(ctx context.Context, id string, upd
 	return nil
 }
 
+// MockSearchService 方法实现
+func (m *MockSearchService) BuildIndex(ctx context.Context, documentID, version string) error {
+	return nil
+}
+
+func (m *MockSearchService) BuildIndexBatch(ctx context.Context, indices []*model.SearchIndex) error {
+	return nil
+}
+
+func (m *MockSearchService) Search(ctx context.Context, request *model.SearchRequest) (*model.SearchResponse, error) {
+	return &model.SearchResponse{
+		Total: 1,
+		Items: []model.SearchResult{
+			{
+				ID:          "test-search-id",
+				DocumentID:  "test-doc-id",
+				Version:     "1.0.0",
+				Title:       "测试文档",
+				Content:     "测试内容",
+				Snippet:     "测试片段",
+				Score:       0.9,
+				ContentType: "text",
+				Section:     "测试章节",
+			},
+		},
+		Page: 1,
+		Size: 10,
+	}, nil
+}
+
+func (m *MockSearchService) GetIndexingStatus(ctx context.Context, documentID string) (map[string]interface{}, error) {
+	return map[string]interface{}{
+		"document_id": documentID,
+		"total":       int64(10),
+		"indexed":     int64(5),
+		"progress":    float64(50),
+		"status":      "indexing",
+	}, nil
+}
+
+func (m *MockSearchService) DeleteIndex(ctx context.Context, documentID string) error {
+	return nil
+}
+
+func (m *MockSearchService) DeleteIndexByVersion(ctx context.Context, documentID, version string) error {
+	return nil
+}
+
 // TestRouter_SetupRoutes 测试路由设置功能
 func TestRouter_SetupRoutes(t *testing.T) {
 	// 设置Gin为测试模式
 	gin.SetMode(gin.TestMode)
 
-	// 创建模拟文档服务
-	mockService := &MockDocumentService{}
-	documentHandler := handler.NewDocumentHandler(mockService)
+	// 创建模拟服务
+	mockDocService := &MockDocumentService{}
+	mockSearchService := &MockSearchService{}
+	documentHandler := handler.NewDocumentHandler(mockDocService)
+	searchHandler := handler.NewSearchHandler(mockSearchService)
 
 	// 创建路由器
-	router := NewRouter(documentHandler)
+	router := NewRouter(documentHandler, searchHandler)
 	r := router.SetupRoutes()
 
 	// 测试健康检查端点
@@ -120,12 +173,14 @@ func TestCORSMiddleware(t *testing.T) {
 	// 设置Gin为测试模式
 	gin.SetMode(gin.TestMode)
 
-	// 创建模拟文档服务
-	mockService := &MockDocumentService{}
-	documentHandler := handler.NewDocumentHandler(mockService)
+	// 创建模拟服务
+	mockDocService := &MockDocumentService{}
+	mockSearchService := &MockSearchService{}
+	documentHandler := handler.NewDocumentHandler(mockDocService)
+	searchHandler := handler.NewSearchHandler(mockSearchService)
 
 	// 创建路由器
-	router := NewRouter(documentHandler)
+	router := NewRouter(documentHandler, searchHandler)
 	r := router.SetupRoutes()
 
 	// 创建OPTIONS请求
@@ -157,12 +212,14 @@ func TestAPIVersionGrouping(t *testing.T) {
 	// 设置Gin为测试模式
 	gin.SetMode(gin.TestMode)
 
-	// 创建模拟文档服务
-	mockService := &MockDocumentService{}
-	documentHandler := handler.NewDocumentHandler(mockService)
+	// 创建模拟服务
+	mockDocService := &MockDocumentService{}
+	mockSearchService := &MockSearchService{}
+	documentHandler := handler.NewDocumentHandler(mockDocService)
+	searchHandler := handler.NewSearchHandler(mockSearchService)
 
 	// 创建路由器
-	router := NewRouter(documentHandler)
+	router := NewRouter(documentHandler, searchHandler)
 	r := router.SetupRoutes()
 
 	// 测试API v1分组路由
@@ -177,12 +234,14 @@ func TestAPIVersionGrouping(t *testing.T) {
 
 // TestNewRouter 测试创建路由器实例
 func TestNewRouter(t *testing.T) {
-	// 创建模拟文档服务
-	mockService := &MockDocumentService{}
-	documentHandler := handler.NewDocumentHandler(mockService)
+	// 创建模拟服务
+	mockDocService := &MockDocumentService{}
+	mockSearchService := &MockSearchService{}
+	documentHandler := handler.NewDocumentHandler(mockDocService)
+	searchHandler := handler.NewSearchHandler(mockSearchService)
 
 	// 测试创建路由器
-	router := NewRouter(documentHandler)
+	router := NewRouter(documentHandler, searchHandler)
 
 	if router == nil {
 		t.Fatal("NewRouter 返回了 nil")
@@ -196,6 +255,11 @@ func TestNewRouter(t *testing.T) {
 	// 检查文档处理器是否正确设置
 	if router.documentHandler != documentHandler {
 		t.Error("路由器的文档处理器未正确设置")
+	}
+
+	// 检查搜索处理器是否正确设置
+	if router.searchHandler != searchHandler {
+		t.Error("路由器的搜索处理器未正确设置")
 	}
 
 	// 测试路由器可以正常设置路由

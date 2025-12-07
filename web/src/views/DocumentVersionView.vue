@@ -35,7 +35,7 @@
             <div v-else>
               <pre v-if="documentType === 'markdown' || documentType === 'java_doc'" class="mb-0">{{ documentVersion.content }}</pre>
               <div v-else-if="documentType === 'swagger' || documentType === 'openapi'" class="mb-0">
-                <pre>{{ formatJsonContent(documentVersion.content) }}</pre>
+                <pre>{{ formatYamlOrJsonContent(documentVersion.content, documentType) }}</pre>
               </div>
               <div v-else-if="documentType === 'pdf'" class="mb-0">
                 <div class="pdf-preview">
@@ -63,7 +63,7 @@
               </div>
               <div v-else class="mb-0">
                 <div class="other-doc-preview">
-                  <p class="text-muted">{{ documentType.toUpperCase() }} 版本文档预览</p>
+                  <p class="text-muted">{{ documentType ? documentType.toUpperCase() : '未知' }} 版本文档预览</p>
                   <div v-if="documentVersion.content && documentVersion.content.trim() !== ''">
                     <pre class="other-content">{{ documentVersion.content }}</pre>
                     <p class="text-info small mt-2">文档已提取内容，如需查看完整格式请下载文件</p>
@@ -397,6 +397,31 @@ export default {
       }
     }
     
+    // 格式化YAML或JSON内容
+    const formatYamlOrJsonContent = (content, type) => {
+      console.log('DEBUG: formatYamlOrJsonContent - type:', type, 'content前50字符:', content ? content.substring(0, 50) : '空')
+      
+      if (!content || content.trim() === '') {
+        return content
+      }
+      
+      // 首先尝试是否为JSON
+      try {
+        // 检查是否以 { 开头，如果是则尝试解析为JSON
+        const trimmedContent = content.trim()
+        if (trimmedContent.startsWith('{') || trimmedContent.startsWith('[')) {
+          return JSON.stringify(JSON.parse(content), null, 2)
+        }
+      } catch (e) {
+        console.log('DEBUG: 内容不是有效的JSON，将作为YAML处理')
+      }
+      
+      // 如果不是JSON，则作为YAML处理，直接返回原内容
+      // 实际项目中可以添加YAML格式化逻辑
+      console.log('DEBUG: 内容作为YAML处理，直接返回')
+      return content
+    }
+    
     return {
       documentVersion,
       documentType,
@@ -407,7 +432,8 @@ export default {
       getStatusText,
       formatFileSize,
       formatDate,
-      formatJsonContent
+      formatJsonContent,
+      formatYamlOrJsonContent
     }
   }
 }

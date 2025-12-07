@@ -204,6 +204,7 @@ func TestNewDocumentService(t *testing.T) {
 		metadataRepo   repository.DocumentMetadataRepository
 		storageService StorageService
 		parserService  DocumentParserService
+		searchService  SearchService
 		baseStorageDir string
 	}
 	tests := []struct {
@@ -215,7 +216,7 @@ func TestNewDocumentService(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if got := NewDocumentService(tt.args.documentRepo, tt.args.versionRepo, tt.args.metadataRepo, tt.args.storageService, tt.args.parserService, tt.args.baseStorageDir); !reflect.DeepEqual(got, tt.want) {
+			if got := NewDocumentService(tt.args.documentRepo, tt.args.versionRepo, tt.args.metadataRepo, tt.args.storageService, tt.args.parserService, tt.args.searchService, tt.args.baseStorageDir); !reflect.DeepEqual(got, tt.want) {
 				t.Errorf("NewDocumentService() = %v, want %v", got, tt.want)
 			}
 		})
