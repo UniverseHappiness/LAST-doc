@@ -60,11 +60,26 @@ func main() {
 	storageService := service.NewLocalStorageService(baseStorageDir)
 	parserService := service.NewParserService()
 	cacheService := service.NewMemoryCache()
+
+	// 初始化嵌入服务
+	// 优先使用 OpenAI 服务，如果 API Key 未设置，则使用模拟服务
+	openaiAPIKey := getEnv("OPENAI_API_KEY", "")
+	openaiModel := getEnv("OPENAI_MODEL", "")
+	var embeddingService service.EmbeddingService
+	if openaiAPIKey != "" {
+		log.Printf("Using OpenAI embedding service with model: %s", openaiModel)
+		embeddingService = service.NewOpenAIEmbeddingService(openaiAPIKey, openaiModel)
+	} else {
+		log.Println("OpenAI API key not provided, using mock embedding service")
+		embeddingService = service.NewMockEmbeddingService()
+	}
+
 	searchService := service.NewSearchService(
 		searchIndexRepo,
 		documentRepo,
 		versionRepo,
 		cacheService,
+		embeddingService,
 		true, // 启用索引
 	)
 	documentService := service.NewDocumentService(
@@ -125,9 +140,6 @@ func autoMigrate(db *gorm.DB) error {
 			return err
 		}
 		log.Printf("Warning: pgvector extension not available, embedding column will not be created")
-	}
-	if err != nil {
-		return err
 	}
 
 	// 为document_versions表添加复合唯一约束

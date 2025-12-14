@@ -17,9 +17,9 @@
           <div class="row">
             <div class="col-md-6 mb-3">
               <label for="docType" class="form-label">文档类型 <span class="text-danger">*</span></label>
-              <select class="form-select" 
-                      id="docType" 
-                      v-model="uploadForm.type" 
+              <select class="form-select"
+                      id="docType"
+                      v-model="uploadForm.type"
                       required>
                 <option value="">请选择文档类型</option>
                 <option value="markdown">Markdown</option>
@@ -32,14 +32,26 @@
             </div>
             
             <div class="col-md-6 mb-3">
-              <label for="docVersion" class="form-label">版本 <span class="text-danger">*</span></label>
-              <input type="text" 
-                     class="form-control" 
-                     id="docVersion" 
-                     v-model="uploadForm.version" 
-                     placeholder="例如: 1.0.0" 
-                     required>
+              <label for="docCategory" class="form-label">文档分类 <span class="text-danger">*</span></label>
+              <select class="form-select"
+                      id="docCategory"
+                      v-model="uploadForm.category"
+                      required>
+                <option value="">请选择文档分类</option>
+                <option value="code">代码</option>
+                <option value="document">文档</option>
+              </select>
             </div>
+          </div>
+          
+          <div class="mb-3">
+            <label for="docVersion" class="form-label">版本 <span class="text-danger">*</span></label>
+            <input type="text"
+                   class="form-control"
+                   id="docVersion"
+                   v-model="uploadForm.version"
+                   placeholder="例如: 1.0.0"
+                   required>
           </div>
           
           <div class="mb-3">

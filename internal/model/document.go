@@ -23,6 +23,14 @@ const (
 	DocumentTypeJavaDoc  DocumentType = "java_doc"
 )
 
+// DocumentCategory 定义文档分类
+type DocumentCategory string
+
+const (
+	CategoryCode     DocumentCategory = "code"
+	CategoryDocument DocumentCategory = "document"
+)
+
 // DocumentStatus 定义文档状态
 type DocumentStatus string
 
@@ -35,20 +43,21 @@ const (
 
 // Document 定义文档模型
 type Document struct {
-	ID           string         `json:"id" gorm:"primaryKey"`
-	Name         string         `json:"name" gorm:"not null;index"`
-	Type         DocumentType   `json:"type" gorm:"not null;index"`
-	Version      string         `json:"version" gorm:"not null;index"`
-	Tags         StringArray    `json:"tags" gorm:"type:character varying[]"`
-	FilePath     string         `json:"file_path" gorm:"not null"`
-	FileSize     int64          `json:"file_size" gorm:"not null"`
-	Status       DocumentStatus `json:"status" gorm:"not null;index"`
-	Description  string         `json:"description"`
-	Library      string         `json:"library" gorm:"index"`     // 所属库，用于版本过滤
-	Content      string         `json:"content" gorm:"type:text"` // 解析后的内容摘要
-	VersionCount int64          `json:"version_count" gorm:"-"`   // 版本数量，不存储到数据库
-	CreatedAt    time.Time      `json:"created_at" gorm:"autoCreateTime"`
-	UpdatedAt    time.Time      `json:"updated_at" gorm:"autoUpdateTime"`
+	ID           string           `json:"id" gorm:"primaryKey"`
+	Name         string           `json:"name" gorm:"not null;index"`
+	Type         DocumentType     `json:"type" gorm:"not null;index"`
+	Category     DocumentCategory `json:"category" gorm:"not null;index"` // 文档分类：代码或文档
+	Version      string           `json:"version" gorm:"not null;index"`
+	Tags         StringArray      `json:"tags" gorm:"type:character varying[]"`
+	FilePath     string           `json:"file_path" gorm:"not null"`
+	FileSize     int64            `json:"file_size" gorm:"not null"`
+	Status       DocumentStatus   `json:"status" gorm:"not null;index"`
+	Description  string           `json:"description"`
+	Library      string           `json:"library" gorm:"index"`     // 所属库，用于版本过滤
+	Content      string           `json:"content" gorm:"type:text"` // 解析后的内容摘要
+	VersionCount int64            `json:"version_count" gorm:"-"`   // 版本数量，不存储到数据库
+	CreatedAt    time.Time        `json:"created_at" gorm:"autoCreateTime"`
+	UpdatedAt    time.Time        `json:"updated_at" gorm:"autoUpdateTime"`
 }
 
 // DocumentVersion 定义文档版本模型

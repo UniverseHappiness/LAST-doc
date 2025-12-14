@@ -22,6 +22,7 @@
             <p class="text-muted mb-1">{{ doc.description || '暂无描述' }}</p>
             <div class="mb-2">
               <span class="badge bg-secondary document-badge">{{ doc.type }}</span>
+              <span class="badge" :class="getCategoryBadgeClass(doc.category)">{{ getCategoryText(doc.category) }}</span>
               <span class="badge bg-info document-badge">当前版本: {{ doc.version }}</span>
               <span class="badge bg-primary document-badge">{{ doc.library }}</span>
               <span class="badge" :class="getStatusBadgeClass(doc.status)">{{ getStatusText(doc.status) }}</span>
@@ -123,6 +124,24 @@ export default {
       }
     }
     
+    // 获取分类徽章样式
+    const getCategoryBadgeClass = (category) => {
+      switch (category) {
+        case 'code': return 'bg-success'
+        case 'document': return 'bg-info'
+        default: return 'bg-light text-dark'
+      }
+    }
+    
+    // 获取分类文本
+    const getCategoryText = (category) => {
+      switch (category) {
+        case 'code': return '代码'
+        case 'document': return '文档'
+        default: return category
+      }
+    }
+    
     // 获取分页页码
     const getPaginationPages = () => {
       const totalPages = Math.ceil(props.pagination.total / props.pagination.size)
@@ -148,6 +167,8 @@ export default {
       handleSearch,
       getStatusBadgeClass,
       getStatusText,
+      getCategoryBadgeClass,
+      getCategoryText,
       getPaginationPages
     }
   }

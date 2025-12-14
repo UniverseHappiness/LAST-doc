@@ -182,6 +182,22 @@ export default {
         console.log('DEBUG: 从localStorage获取到版本号:', versionToUse)
       }
       
+      // 如果仍然为空，获取最新版本
+      if (!versionToUse && props.documentId) {
+        console.log('DEBUG: 所有方式都无法获取版本号，尝试获取最新版本')
+        try {
+          const response = await fetch(`/api/v1/documents/${props.documentId}/versions/latest`)
+          const result = await response.json()
+          
+          if (result.code === 200) {
+            versionToUse = result.data.version
+            console.log('DEBUG: 成功获取最新版本号:', versionToUse)
+          }
+        } catch (err) {
+          console.error('DEBUG: 获取最新版本失败:', err)
+        }
+      }
+      
       if (!props.documentId || !versionToUse) {
         console.log('DEBUG: props.documentId或versionToUse为空，函数静默返回')
         return // 不显示错误，静默返回
@@ -410,15 +426,18 @@ export default {
         // 检查是否以 { 开头，如果是则尝试解析为JSON
         const trimmedContent = content.trim()
         if (trimmedContent.startsWith('{') || trimmedContent.startsWith('[')) {
-          return JSON.stringify(JSON.parse(content), null, 2)
+          // 尝试解析JSON
+          const parsed = JSON.parse(content)
+          return JSON.stringify(parsed, null, 2)
         }
       } catch (e) {
-        console.log('DEBUG: 内容不是有效的JSON，将作为YAML处理')
+        console.log('DEBUG: 内容不是有效的JSON，将作为YAML处理:', e.message)
+        // 直接返回原内容，不再尝试其他解析
+        return content
       }
       
-      // 如果不是JSON，则作为YAML处理，直接返回原内容
-      // 实际项目中可以添加YAML格式化逻辑
-      console.log('DEBUG: 内容作为YAML处理，直接返回')
+      // 如果不是JSON格式，直接返回原内容
+      console.log('DEBUG: 内容不是JSON格式，直接返回')
       return content
     }
     

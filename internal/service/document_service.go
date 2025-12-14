@@ -19,7 +19,7 @@ import (
 
 // DocumentService 文档服务接口
 type DocumentService interface {
-	UploadDocument(ctx context.Context, file *multipart.FileHeader, name, docType, version, library, description string, tags []string) (*model.Document, error)
+	UploadDocument(ctx context.Context, file *multipart.FileHeader, name, docType, category, version, library, description string, tags []string) (*model.Document, error)
 	GetDocument(ctx context.Context, id string) (*model.Document, error)
 	GetDocuments(ctx context.Context, page, size int, filters map[string]interface{}) ([]*model.Document, int64, error)
 	GetDocumentVersions(ctx context.Context, documentID string) ([]*model.DocumentVersion, error)
@@ -66,15 +66,21 @@ func NewDocumentService(
 }
 
 // UploadDocument 上传文档
-func (s *documentService) UploadDocument(ctx context.Context, file *multipart.FileHeader, name, docType, version, library, description string, tags []string) (*model.Document, error) {
+func (s *documentService) UploadDocument(ctx context.Context, file *multipart.FileHeader, name, docType, category, version, library, description string, tags []string) (*model.Document, error) {
 	// 验证文档类型
 	documentType := model.DocumentType(docType)
 	if !isValidDocumentType(documentType) {
 		return nil, fmt.Errorf("invalid document type: %s", docType)
 	}
 
+	// 验证文档分类
+	documentCategory := model.DocumentCategory(category)
+	if !isValidDocumentCategory(documentCategory) {
+		return nil, fmt.Errorf("invalid document category: %s", category)
+	}
+
 	// 检查是否已有同库文档（仅通过Library判断）
-	existingDocs, _, err := s.documentRepo.List(ctx, 1, 100, map[string]interface{}{
+	existingDocs, _, err := s.documentRepo.List(ctx, 1, 100, map[string]any{
 		"library": library,
 	})
 	if err != nil {
@@ -114,6 +120,7 @@ func (s *documentService) UploadDocument(ctx context.Context, file *multipart.Fi
 			ID:          documentID,
 			Name:        name,
 			Type:        documentType,
+			Category:    documentCategory,
 			Version:     version,
 			Tags:        tags,
 			FilePath:    filePath,
@@ -190,12 +197,37 @@ func (s *documentService) UploadDocument(ctx context.Context, file *multipart.Fi
 
 // GetDocument 获取文档
 func (s *documentService) GetDocument(ctx context.Context, id string) (*model.Document, error) {
-	return s.documentRepo.GetByID(ctx, id)
+	document, err := s.documentRepo.GetByID(ctx, id)
+	if err != nil {
+		return nil, err
+	}
+
+	// 获取最新版本并更新文档的版本字段
+	latestVersion, err := s.versionRepo.GetLatestVersion(ctx, document.ID)
+	if err == nil && latestVersion != nil {
+		document.Version = latestVersion.Version
+	}
+
+	return document, nil
 }
 
 // GetDocuments 获取文档列表
 func (s *documentService) GetDocuments(ctx context.Context, page, size int, filters map[string]interface{}) ([]*model.Document, int64, error) {
-	return s.documentRepo.List(ctx, page, size, filters)
+	documents, total, err := s.documentRepo.List(ctx, page, size, filters)
+	if err != nil {
+		return nil, 0, err
+	}
+
+	// 为每个文档更新为最新版本
+	for _, doc := range documents {
+		latestVersion, err := s.versionRepo.GetLatestVersion(ctx, doc.ID)
+		if err == nil && latestVersion != nil {
+			// 更新文档的版本为最新版本
+			doc.Version = latestVersion.Version
+		}
+	}
+
+	return documents, total, nil
 }
 
 // GetDocumentVersions 获取文档版本列表
@@ -563,6 +595,16 @@ func (s *documentService) BuildAllMissingIndexes(ctx context.Context) error {
 
 	log.Printf("DEBUG: 搜索索引构建完成 - 成功: %d, 失败: %d", successCount, failCount)
 	return nil
+}
+
+// isValidDocumentCategory 验证文档分类是否有效
+func isValidDocumentCategory(category model.DocumentCategory) bool {
+	switch category {
+	case model.CategoryCode, model.CategoryDocument:
+		return true
+	default:
+		return false
+	}
 }
 
 // StorageService 存储服务接口

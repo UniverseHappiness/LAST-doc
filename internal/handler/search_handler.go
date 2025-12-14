@@ -90,7 +90,7 @@ func (h *SearchHandler) SearchGet(c *gin.Context) {
 	searchType := c.DefaultQuery("search_type", "keyword")
 
 	// 解析过滤条件
-	filters := make(map[string]interface{})
+	filters := make(map[string]any)
 	if documentID := c.Query("document_id"); documentID != "" {
 		filters["document_id"] = documentID
 	}

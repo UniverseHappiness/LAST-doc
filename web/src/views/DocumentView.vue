@@ -228,12 +228,24 @@ export default {
     
     // 格式化JSON内容
     const formatJsonContent = (content) => {
-      try {
-        return JSON.stringify(JSON.parse(content), null, 2)
-      } catch (e) {
-        console.error('JSON格式化失败:', e)
+      if (!content || content.trim() === '') {
         return content
       }
+      
+      // 检查是否为JSON格式
+      const trimmedContent = content.trim()
+      if (trimmedContent.startsWith('{') || trimmedContent.startsWith('[')) {
+        try {
+          const parsed = JSON.parse(content)
+          return JSON.stringify(parsed, null, 2)
+        } catch (e) {
+          console.error('JSON格式化失败:', e)
+          return content
+        }
+      }
+      
+      // 如果不是JSON格式，直接返回原内容
+      return content
     }
     
     // 格式化文件大小

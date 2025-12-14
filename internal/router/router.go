@@ -62,6 +62,9 @@ func (r *Router) SetupRoutes() *gin.Engine {
 			// 获取文档版本列表
 			documents.GET("/:id/versions", r.documentHandler.GetDocumentVersions)
 
+			// 获取最新版本的文档
+			documents.GET("/:id/versions/latest", r.documentHandler.GetLatestVersion)
+
 			// 获取指定版本的文档
 			documents.GET("/:id/versions/:version", r.documentHandler.GetDocumentByVersion)
 

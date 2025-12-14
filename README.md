@@ -28,6 +28,9 @@ AI技术文档库是一个综合性的文档管理系统，旨在为企业或团
 - **版本控制**：支持文档版本管理，可查看和恢复历史版本
 - **元数据管理**：支持自定义元数据，增强文档检索和分类能力
 - **标签系统**：灵活的标签系统，便于文档分类和检索
+- **智能检索**：支持关键词搜索、语义搜索和混合搜索，提供精准的文档检索能力
+- **向量嵌入**：集成 OpenAI 兼容的 embedding 服务，支持语义向量化
+- **缓存机制**：智能缓存策略，提高搜索性能和响应速度
 - **权限管理**：基础的用户权限控制，确保文档安全
 - **RESTful API**：标准化的API接口，便于集成和扩展
 
@@ -266,6 +269,79 @@ Python解析服务的详细部署指南请参考 [`DEPLOYMENT.md`](DEPLOYMENT.md
 - **PUT** `/documents/{id}/metadata/{key}` - 更新元数据
 - **DELETE** `/documents/{id}/metadata/{key}` - 删除元数据
 
+#### 文档检索
+- **POST** `/search` - 执行文档搜索
+- **GET** `/search` - 以GET方式执行文档搜索
+- **POST** `/search/documents/{document_id}/versions/{version}/index` - 为指定文档版本构建搜索索引
+- **GET** `/search/documents/{document_id}/index/status` - 获取文档的索引状态
+- **DELETE** `/search/documents/{document_id}/index` - 删除指定文档的所有搜索索引
+- **DELETE** `/search/documents/{document_id}/versions/{version}/index` - 删除指定文档版本的搜索索引
+- **POST** `/search/clear-cache` - 清空搜索缓存
+
+### 检索功能
+
+系统支持三种检索模式：
+
+1. **关键词搜索**：基于BM25算法的传统文本搜索
+2. **语义搜索**：基于向量的语义相似度搜索
+3. **混合搜索**：结合关键词和语义搜索的综合搜索
+
+#### 搜索请求格式
+
+```json
+{
+  "query": "搜索关键词",
+  "searchType": "keyword|semantic|hybrid",
+  "page": 1,
+  "size": 10,
+  "filters": {
+    "document_type": "pdf",
+    "library": "技术文档"
+  }
+}
+```
+
+#### 搜索响应格式
+
+```json
+{
+  "code": 200,
+  "message": "搜索成功",
+  "data": {
+    "total": 100,
+    "items": [
+      {
+        "id": "搜索结果ID",
+        "document_id": "文档ID",
+        "version": "文档版本",
+        "content": "文档内容",
+        "snippet": "内容片段",
+        "score": 0.95,
+        "content_type": "text",
+        "section": "章节标题",
+        "metadata": {
+          "document_name": "文档名称",
+          "document_type": "文档类型",
+          "document_library": "文档库"
+        }
+      }
+    ],
+    "page": 1,
+    "size": 10
+  }
+}
+```
+
+#### Embedding 服务配置
+
+系统支持通过环境变量配置 OpenAI 兼容的 embedding 服务：
+
+- `OPENAI_API_KEY`：OpenAI API 密钥
+- `OPENAI_MODEL`：使用的 embedding 模型（默认：text-embedding-ada-002）
+- `OPENAI_BASE_URL`：自定义 API 基础 URL（用于兼容其他服务）
+
+当未提供 API 密钥时，系统将使用模拟 embedding 服务，确保基本功能可用。
+
 ### 响应格式
 
 成功响应：
@@ -450,7 +526,15 @@ npm run test:unit
 
 ## 更新说明
 
-### v1.0.0 (2025-12-06)
+### v0.2.0 (2025-12-14)
+- 新增 OpenAI 兼容的 embedding 服务
+- 改进搜索功能，支持向量搜索和混合搜索
+- 添加 embedding 服务接口和实现
+- 支持 OpenAI API 密钥和模型配置
+- 添加模拟 embedding 服务用于测试
+- 优化搜索性能和准确性
+
+### v0.1.0 (2025-12-06)
 - 初始版本发布
 - 实现基本的文档管理功能
 - 支持PDF和DOCX等文档解析
@@ -461,13 +545,13 @@ npm run test:unit
 
 ### 计划中的功能
 - [ ] 用户认证和权限管理
-- [ ] 文档全文搜索
+- [x] 文档全文搜索（向量搜索）
 - [ ] 文档预览功能
 - [ ] 批量操作支持
 - [ ] 更多文档格式支持（PPT、XLS等）
 - [ ] 文档协作功能
 - [ ] API限流和安全增强
-- [ ] 性能优化和缓存机制
+- [x] 性能优化和缓存机制
 
 ## 许可证
 

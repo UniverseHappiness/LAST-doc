@@ -66,6 +66,9 @@ func (r *documentRepository) List(ctx context.Context, page, size int, filters m
 		if docType, ok := filters["type"]; ok {
 			query = query.Where("type = ?", docType)
 		}
+		if category, ok := filters["category"]; ok {
+			query = query.Where("category = ?", category)
+		}
 		if version, ok := filters["version"]; ok {
 			query = query.Where("version = ?", version)
 		}
@@ -170,6 +173,9 @@ func (r *documentRepository) Count(ctx context.Context, filters map[string]inter
 		}
 		if docType, ok := filters["type"]; ok {
 			query = query.Where("type = ?", docType)
+		}
+		if category, ok := filters["category"]; ok {
+			query = query.Where("category = ?", category)
 		}
 		if version, ok := filters["version"]; ok {
 			query = query.Where("version = ?", version)

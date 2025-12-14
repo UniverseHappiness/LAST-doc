@@ -47,6 +47,15 @@ func (h *DocumentHandler) UploadDocument(c *gin.Context) {
 		return
 	}
 
+	category := c.PostForm("category")
+	if category == "" {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"code":    400,
+			"message": "文档分类不能为空",
+		})
+		return
+	}
+
 	version := c.PostForm("version")
 	if version == "" {
 		c.JSON(http.StatusBadRequest, gin.H{
@@ -103,7 +112,7 @@ func (h *DocumentHandler) UploadDocument(c *gin.Context) {
 	}
 
 	// 调用服务层上传文档
-	document, err := h.documentService.UploadDocument(context.Background(), file, name, docType, version, library, description, tags)
+	document, err := h.documentService.UploadDocument(context.Background(), file, name, docType, category, version, library, description, tags)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"code":    500,
@@ -126,6 +135,7 @@ func (h *DocumentHandler) UploadDocument(c *gin.Context) {
 // GetDocument 获取文档
 func (h *DocumentHandler) GetDocument(c *gin.Context) {
 	id := c.Param("id")
+	log.Printf("[GetDocument] 收到请求，文档ID: %q", id)
 	if id == "" {
 		c.JSON(http.StatusBadRequest, gin.H{
 			"code":    400,
@@ -328,7 +338,7 @@ func (h *DocumentHandler) UpdateDocument(c *gin.Context) {
 	}
 
 	// 解析更新数据
-	var updates map[string]interface{}
+	var updates map[string]any
 	if err := c.ShouldBindJSON(&updates); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{
 			"code":    400,
@@ -485,6 +495,45 @@ func (h *DocumentHandler) GetDocumentMetadata(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{
 		"code":    200,
 		"data":    metadata,
+		"message": "获取成功",
+	})
+}
+
+// GetLatestVersion 获取文档的最新版本
+func (h *DocumentHandler) GetLatestVersion(c *gin.Context) {
+	documentID := c.Param("id")
+	if documentID == "" {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"code":    400,
+			"message": "文档ID不能为空",
+		})
+		return
+	}
+
+	// 获取文档的所有版本
+	versions, err := h.documentService.GetDocumentVersions(context.Background(), documentID)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"code":    500,
+			"message": "获取文档版本失败: " + err.Error(),
+		})
+		return
+	}
+
+	// 如果没有版本，返回错误
+	if len(versions) == 0 {
+		c.JSON(http.StatusNotFound, gin.H{
+			"code":    404,
+			"message": "文档没有可用版本",
+		})
+		return
+	}
+
+	// 返回最新版本（已按创建时间降序排列）
+	latestVersion := versions[0]
+	c.JSON(http.StatusOK, gin.H{
+		"code":    200,
+		"data":    latestVersion,
 		"message": "获取成功",
 	})
 }

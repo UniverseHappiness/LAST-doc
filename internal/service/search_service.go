@@ -26,11 +26,12 @@ type SearchService interface {
 
 // searchService 搜索服务实现
 type searchService struct {
-	indexRepo       repository.SearchIndexRepository
-	documentRepo    repository.DocumentRepository
-	versionRepo     repository.DocumentVersionRepository
-	cacheService    CacheService
-	indexingEnabled bool
+	indexRepo        repository.SearchIndexRepository
+	documentRepo     repository.DocumentRepository
+	versionRepo      repository.DocumentVersionRepository
+	cacheService     CacheService
+	embeddingService EmbeddingService
+	indexingEnabled  bool
 }
 
 // NewSearchService 创建搜索服务实例
@@ -39,14 +40,16 @@ func NewSearchService(
 	documentRepo repository.DocumentRepository,
 	versionRepo repository.DocumentVersionRepository,
 	cacheService CacheService,
+	embeddingService EmbeddingService,
 	indexingEnabled bool,
 ) SearchService {
 	return &searchService{
-		indexRepo:       indexRepo,
-		documentRepo:    documentRepo,
-		versionRepo:     versionRepo,
-		cacheService:    cacheService,
-		indexingEnabled: indexingEnabled,
+		indexRepo:        indexRepo,
+		documentRepo:     documentRepo,
+		versionRepo:      versionRepo,
+		cacheService:     cacheService,
+		embeddingService: embeddingService,
+		indexingEnabled:  indexingEnabled,
 	}
 }
 
@@ -398,35 +401,22 @@ func (s *searchService) generateEmbedding(content string) []float32 {
 		return nil
 	}
 
-	// 尝试通过 gRPC 调用 Python 嵌入服务
-	// 这里假设有一个嵌入服务运行在本地
-	// 返回一个模拟的嵌入向量，实际项目中应该替换为真实的服务调用
+	// 使用嵌入服务生成向量
+	ctx := context.Background()
+	embedding, err := s.embeddingService.GenerateEmbedding(ctx, content)
+	if err != nil {
+		log.Printf("Error generating embedding with service: %v, falling back to mock service", err)
 
-	// 模拟嵌入向量 - 维度与模型相关，这里使用 384 维度 (sentence-transformers/all-MiniLM-L6-v2 的维度)
-	vector := make([]float32, 384)
-
-	// 使用简单哈希生成模拟向量
-	// 注意：这只是示例，实际项目中应该调用真实的嵌入服务
-	for i := 0; i < len(vector); i++ {
-		// 基于内容和位置生成伪随机值
-		hash := simpleHash(fmt.Sprintf("%s-%d", content, i))
-		// 转换为 -1 到 1 之间的浮点数
-		vector[i] = float32(hash%1000)/500.0 - 1.0
-	}
-
-	// 归一化向量
-	norm := float32(0)
-	for _, v := range vector {
-		norm += v * v
-	}
-	if norm > 0 {
-		norm = sqrt(norm)
-		for i := range vector {
-			vector[i] /= norm
+		// 如果嵌入服务失败，使用模拟服务
+		mockService := NewMockEmbeddingService()
+		embedding, err = mockService.GenerateEmbedding(ctx, content)
+		if err != nil {
+			log.Printf("Error generating embedding with mock service: %v", err)
+			return nil
 		}
 	}
 
-	return vector
+	return embedding
 }
 
 // mergeSearchResults 合并搜索结果
@@ -520,6 +510,17 @@ func (s *searchService) convertToSearchResults(indices []*model.SearchIndex) []m
 		// 生成内容片段
 		snippet := s.generateSnippet(idx.Content, 200)
 
+		// 解析元数据
+		var metadata map[string]interface{}
+		if idx.Metadata != "" {
+			if err := json.Unmarshal([]byte(idx.Metadata), &metadata); err != nil {
+				log.Printf("Error unmarshaling metadata: %v", err)
+				metadata = make(map[string]interface{})
+			}
+		} else {
+			metadata = make(map[string]interface{})
+		}
+
 		result := model.SearchResult{
 			ID:          idx.ID,
 			DocumentID:  idx.DocumentID,
@@ -529,6 +530,7 @@ func (s *searchService) convertToSearchResults(indices []*model.SearchIndex) []m
 			Score:       idx.Score,
 			ContentType: idx.ContentType,
 			Section:     idx.Section,
+			Metadata:    metadata,
 		}
 
 		results = append(results, result)

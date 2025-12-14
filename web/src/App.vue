@@ -44,8 +44,8 @@
           </div>
           <div class="mb-3">
             <label for="filterType" class="form-label">文档类型</label>
-            <select class="form-select form-select-sm" 
-                    id="filterType" 
+            <select class="form-select form-select-sm"
+                    id="filterType"
                     v-model="filters.type">
               <option value="">全部类型</option>
               <option value="markdown">Markdown</option>
@@ -57,11 +57,21 @@
             </select>
           </div>
           <div class="mb-3">
+            <label for="filterCategory" class="form-label">文档分类</label>
+            <select class="form-select form-select-sm"
+                    id="filterCategory"
+                    v-model="filters.category">
+              <option value="">全部分类</option>
+              <option value="code">代码</option>
+              <option value="document">文档</option>
+            </select>
+          </div>
+          <div class="mb-3">
             <label for="filterVersion" class="form-label">版本</label>
-            <input type="text" 
-                   class="form-control form-control-sm" 
-                   id="filterVersion" 
-                   v-model="filters.version" 
+            <input type="text"
+                   class="form-control form-control-sm"
+                   id="filterVersion"
+                   v-model="filters.version"
                    placeholder="输入版本号">
           </div>
           <div class="mb-3">
@@ -230,6 +240,7 @@ export default {
     const filters = reactive({
       library: '',
       type: '',
+      category: '',
       version: '',
       status: ''
     })
@@ -245,6 +256,7 @@ export default {
     const uploadForm = reactive({
       name: '',
       type: '',
+      category: '',
       version: '',
       library: '',
       description: '',
@@ -277,9 +289,25 @@ export default {
     })
     
     // 查看文档
-    const viewDocument = (doc) => {
+    const viewDocument = async (doc) => {
       console.log('DEBUG: 尝试查看文档', doc)
       selectedDocumentId.value = doc.id
+      
+      // 获取最新版本并设置为默认版本
+      try {
+        const latestVersion = await fetch(`/api/v1/documents/${doc.id}/versions/latest`)
+        const result = await latestVersion.json()
+        
+        if (result.code === 200) {
+          selectedVersion.value = result.data.version
+          console.log('DEBUG: 获取到最新版本:', selectedVersion.value)
+        }
+      } catch (error) {
+        console.error('获取最新版本失败:', error)
+        // 如果获取失败，使用文档本身的版本
+        selectedVersion.value = doc.version
+      }
+      
       currentView.value = 'view'
     }
     

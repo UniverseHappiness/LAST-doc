@@ -46,36 +46,66 @@
           <div v-if="showAdvancedOptions" class="mt-3">
             <div class="row g-3">
               <div class="col-md-4">
-                <label for="documentId" class="form-label">文档ID</label>
-                <input 
-                  type="text" 
-                  class="form-control" 
-                  id="documentId" 
-                  v-model="searchForm.filters.document_id" 
-                  placeholder="指定文档ID"
+                <label for="documentType" class="form-label">文档类型</label>
+                <select
+                  class="form-select"
+                  id="documentType"
+                  v-model="searchForm.filters.type"
                 >
+                  <option value="">全部类型</option>
+                  <option value="markdown">Markdown</option>
+                  <option value="pdf">PDF</option>
+                  <option value="docx">DOCX</option>
+                  <option value="swagger">Swagger</option>
+                  <option value="openapi">OpenAPI</option>
+                  <option value="java_doc">JavaDoc</option>
+                </select>
               </div>
               <div class="col-md-4">
-                <label for="version" class="form-label">版本</label>
-                <input 
-                  type="text" 
-                  class="form-control" 
-                  id="version" 
-                  v-model="searchForm.filters.version" 
-                  placeholder="指定版本号"
+                <label for="documentCategory" class="form-label">文档分类</label>
+                <select
+                  class="form-select"
+                  id="documentCategory"
+                  v-model="searchForm.filters.category"
+                >
+                  <option value="">全部分类</option>
+                  <option value="code">代码</option>
+                  <option value="document">文档</option>
+                </select>
+              </div>
+              <div class="col-md-4">
+                <label for="library" class="form-label">所属库</label>
+                <input
+                  type="text"
+                  class="form-control"
+                  id="library"
+                  v-model="searchForm.filters.library"
+                  placeholder="指定库名称"
                 >
               </div>
+            </div>
+            <div class="row g-3 mt-2">
               <div class="col-md-4">
                 <label for="contentType" class="form-label">内容类型</label>
-                <select 
-                  class="form-select" 
-                  id="contentType" 
+                <select
+                  class="form-select"
+                  id="contentType"
                   v-model="searchForm.filters.content_type"
                 >
                   <option value="">全部类型</option>
-                  <option value="text">文本</option>
-                  <option value="code">代码</option>
+                  <option value="text">文本内容</option>
+                  <option value="code">代码内容</option>
                 </select>
+              </div>
+              <div class="col-md-4">
+                <label for="version" class="form-label">版本</label>
+                <input
+                  type="text"
+                  class="form-control"
+                  id="version"
+                  v-model="searchForm.filters.version"
+                  placeholder="指定版本号"
+                >
               </div>
             </div>
           </div>
@@ -108,13 +138,15 @@
           <div v-for="result in searchResults" :key="result.id" class="list-group-item">
             <div class="d-flex justify-content-between">
               <div>
-                <h5 class="mb-1">{{ result.section || '无标题' }}</h5>
+                <h5 class="mb-1">{{ result.metadata?.document_name || '无标题' }}</h5>
                 <p class="mb-1 text-muted">{{ result.snippet }}</p>
                 <div>
                   <span class="badge bg-secondary me-2">{{ result.content_type }}</span>
-                  <span class="badge bg-info me-2">文档: {{ result.document_id }}</span>
+                  <span v-if="result.metadata?.document_type" class="badge bg-info me-2">类型: {{ getDocumentTypeText(result.metadata.document_type) }}</span>
+                  <span v-if="result.metadata?.document_category" class="badge me-2" :class="getCategoryBadgeClass(result.metadata.document_category)">{{ getCategoryText(result.metadata.document_category) }}</span>
+                  <span v-if="result.metadata?.document_library" class="badge bg-primary me-2">库: {{ result.metadata.document_library }}</span>
                   <span class="badge bg-light text-dark me-2">版本: {{ result.version }}</span>
-                  <span class="badge bg-primary">相关度: {{ (result.score * 100).toFixed(1) }}%</span>
+                  <span class="badge bg-success">相关度: {{ (result.score * 100).toFixed(1) }}%</span>
                 </div>
               </div>
               <div>
@@ -164,9 +196,11 @@ export default {
       query: '',
       searchType: 'keyword',
       filters: {
-        document_id: '',
         version: '',
-        content_type: ''
+        content_type: '',
+        type: '',
+        category: '',
+        library: ''
       }
     })
     
@@ -262,9 +296,11 @@ export default {
       searchForm.query = ''
       searchForm.searchType = 'keyword'
       searchForm.filters = {
-        document_id: '',
         version: '',
-        content_type: ''
+        content_type: '',
+        type: '',
+        category: '',
+        library: ''
       }
       searchResults.value = []
       searchTotal.value = 0
@@ -326,6 +362,37 @@ export default {
       await changePage(1)
     }
     
+    // 获取文档类型文本
+    const getDocumentTypeText = (type) => {
+      switch (type) {
+        case 'markdown': return 'Markdown'
+        case 'pdf': return 'PDF'
+        case 'docx': return 'DOCX'
+        case 'swagger': return 'Swagger'
+        case 'openapi': return 'OpenAPI'
+        case 'java_doc': return 'JavaDoc'
+        default: return type
+      }
+    }
+    
+    // 获取分类徽章样式
+    const getCategoryBadgeClass = (category) => {
+      switch (category) {
+        case 'code': return 'bg-success'
+        case 'document': return 'bg-info'
+        default: return 'bg-light text-dark'
+      }
+    }
+    
+    // 获取分类文本
+    const getCategoryText = (category) => {
+      switch (category) {
+        case 'code': return '代码'
+        case 'document': return '文档'
+        default: return category
+      }
+    }
+    
     // 查看文档
     const viewDocument = (result) => {
       // 这里可以实现跳转到文档详情页面的逻辑
@@ -347,7 +414,10 @@ export default {
       resetSearch,
       changePage,
       changePageSize,
-      viewDocument
+      viewDocument,
+      getDocumentTypeText,
+      getCategoryBadgeClass,
+      getCategoryText
     }
   }
 }

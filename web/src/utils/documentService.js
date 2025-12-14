@@ -55,6 +55,17 @@ export function useDocumentService(state) {
     }
   }
 
+  // 获取最新版本
+  const getLatestVersion = async (documentId) => {
+    try {
+      const response = await axios.get(`${apiBase}/documents/${documentId}/versions/latest`)
+      return response.data.data
+    } catch (error) {
+      console.error('获取最新版本失败:', error)
+      throw error
+    }
+  }
+
   // 上传文档
   const uploadDocument = async () => {
     console.log('DEBUG: documentService - uploadDocument 函数被调用')
@@ -78,6 +89,7 @@ export function useDocumentService(state) {
     formData.append('file', uploadForm.file)
     formData.append('name', uploadForm.name)
     formData.append('type', uploadForm.type)
+    formData.append('category', uploadForm.category)
     formData.append('version', uploadForm.version)
     formData.append('library', uploadForm.library)
     formData.append('description', uploadForm.description)
@@ -248,6 +260,7 @@ export function useDocumentService(state) {
   const resetUploadForm = () => {
     uploadForm.name = ''
     uploadForm.type = ''
+    uploadForm.category = ''
     uploadForm.version = ''
     uploadForm.library = ''
     uploadForm.description = ''
@@ -297,6 +310,7 @@ export function useDocumentService(state) {
   return {
     fetchDocuments,
     fetchDocumentVersions,
+    getLatestVersion,
     uploadDocument,
     updateDocument,
     deleteDocument,
