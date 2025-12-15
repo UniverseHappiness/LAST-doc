@@ -307,6 +307,67 @@ export function useDocumentService(state) {
     return date.toLocaleString('zh-CN')
   }
 
+  // AI友好格式相关方法
+  const getStructuredContent = async (documentId, version) => {
+    try {
+      const response = await axios.get(`${apiBase}/ai-format/documents/${documentId}/versions/${version}/structured`)
+      return response.data
+    } catch (error) {
+      console.error('获取结构化内容失败:', error)
+      throw error
+    }
+  }
+
+  const generateLLMFormat = async (documentId, version, options) => {
+    try {
+      const response = await axios.post(`${apiBase}/ai-format/documents/${documentId}/versions/${version}/llm`, options)
+      return response.data
+    } catch (error) {
+      console.error('生成LLM优化格式失败:', error)
+      throw error
+    }
+  }
+
+  const generateMultiGranularity = async (documentId, version) => {
+    try {
+      const response = await axios.get(`${apiBase}/ai-format/documents/${documentId}/versions/${version}/multigranularity`)
+      return response.data
+    } catch (error) {
+      console.error('生成多粒度表示失败:', error)
+      throw error
+    }
+  }
+
+  const injectContext = async (documentId, version, options) => {
+    try {
+      const response = await axios.post(`${apiBase}/ai-format/documents/${documentId}/versions/${version}/context`, options)
+      return response.data
+    } catch (error) {
+      console.error('注入上下文失败:', error)
+      throw error
+    }
+  }
+
+  const getAIFriendlyFormats = async (documentId, version, options = {}) => {
+    try {
+      const params = new URLSearchParams()
+      if (options.type) params.append('type', options.type)
+      if (options.maxTokens) params.append('max_tokens', options.maxTokens)
+      if (options.includeCode !== undefined) params.append('include_code', options.includeCode)
+      if (options.summaryLevel) params.append('summary_level', options.summaryLevel)
+      
+      const queryString = params.toString()
+      const url = `${apiBase}/ai-format/documents/${documentId}/versions/${version}${queryString ? '?' + queryString : ''}`
+      
+      const response = await axios.get(url)
+      return response.data
+    } catch (error) {
+      console.error('获取AI友好格式失败:', error)
+      throw error
+    }
+  }
+
+  // 导出传统的组合式API
   return {
     fetchDocuments,
     fetchDocumentVersions,
@@ -322,6 +383,103 @@ export function useDocumentService(state) {
     getStatusBadgeClass,
     getStatusText,
     formatFileSize,
-    formatDate
+    formatDate,
+    getStructuredContent,
+    generateLLMFormat,
+    generateMultiGranularity,
+    injectContext,
+    getAIFriendlyFormats
+  }
+}
+
+// 导出独立的函数式API
+export const documentService = {
+  getDocuments: async (params = {}) => {
+    try {
+      const response = await axios.get('/api/v1/documents', { params })
+      return response.data
+    } catch (error) {
+      console.error('获取文档列表失败:', error)
+      throw error
+    }
+  },
+
+  getDocumentVersions: async (documentId) => {
+    try {
+      const response = await axios.get(`/api/v1/documents/${documentId}/versions`)
+      return response.data
+    } catch (error) {
+      console.error('获取文档版本失败:', error)
+      throw error
+    }
+  },
+
+  getDocumentByVersion: async (documentId, version) => {
+    try {
+      const response = await axios.get(`/api/v1/documents/${documentId}/versions/${version}`)
+      return response.data
+    } catch (error) {
+      console.error('获取文档版本失败:', error)
+      throw error
+    }
+  },
+
+  getStructuredContent: async (documentId, version) => {
+    try {
+      const response = await axios.get(`/api/v1/ai-format/documents/${documentId}/versions/${version}/structured`)
+      return response.data
+    } catch (error) {
+      console.error('获取结构化内容失败:', error)
+      throw error
+    }
+  },
+
+  generateLLMFormat: async (documentId, version, options) => {
+    try {
+      const response = await axios.post(`/api/v1/ai-format/documents/${documentId}/versions/${version}/llm`, options)
+      return response.data
+    } catch (error) {
+      console.error('生成LLM优化格式失败:', error)
+      throw error
+    }
+  },
+
+  generateMultiGranularity: async (documentId, version) => {
+    try {
+      const response = await axios.get(`/api/v1/ai-format/documents/${documentId}/versions/${version}/multigranularity`)
+      return response.data
+    } catch (error) {
+      console.error('生成多粒度表示失败:', error)
+      throw error
+    }
+  },
+
+  injectContext: async (documentId, version, options) => {
+    try {
+      const response = await axios.post(`/api/v1/ai-format/documents/${documentId}/versions/${version}/context`, options)
+      return response.data
+    } catch (error) {
+      console.error('注入上下文失败:', error)
+      throw error
+    }
+  },
+
+  getAIFriendlyFormats: async (documentId, version, options = {}) => {
+    try {
+      const params = new URLSearchParams()
+      if (options.type) params.append('type', options.type)
+      if (options.maxTokens) params.append('max_tokens', options.maxTokens)
+      if (options.includeCode !== undefined) params.append('include_code', options.includeCode)
+      if (options.summaryLevel) params.append('summary_level', options.summaryLevel)
+      
+      const queryString = params.toString()
+      const url = `/api/v1/ai-format/documents/${documentId}/versions/${version}${queryString ? '?' + queryString : ''}`
+      
+      const response = await axios.get(url)
+      return response.data
+    } catch (error) {
+      console.error('获取AI友好格式失败:', error)
+      throw error
+    }
   }
 }

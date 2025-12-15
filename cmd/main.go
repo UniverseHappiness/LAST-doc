@@ -6,6 +6,7 @@ import (
 	"log"
 	"os"
 	"strings"
+	"time"
 
 	// "path/filepath"
 
@@ -45,6 +46,12 @@ func main() {
 		log.Fatalf("Failed to migrate database: %v", err)
 	}
 
+	// 执行用户表迁移
+	err = migrateUserTables(db)
+	if err != nil {
+		log.Fatalf("Failed to migrate user tables: %v", err)
+	}
+
 	// 创建存储目录
 	if err := os.MkdirAll(baseStorageDir, 0755); err != nil {
 		log.Fatalf("Failed to create storage directory: %v", err)
@@ -55,6 +62,8 @@ func main() {
 	versionRepo := repository.NewDocumentVersionRepository(db)
 	metadataRepo := repository.NewDocumentMetadataRepository(db)
 	searchIndexRepo := repository.NewSearchIndexRepository(db)
+	userRepo := repository.NewUserRepository(db)
+	passwordResetTokenRepo := repository.NewPasswordResetTokenRepository(db)
 
 	// 初始化服务
 	storageService := service.NewLocalStorageService(baseStorageDir)
@@ -92,13 +101,30 @@ func main() {
 		baseStorageDir,
 	)
 
+	// 初始化用户服务
+	jwtSecret := getEnv("JWT_SECRET", "your-secret-key-change-in-production")
+	jwtExpiration := 24 * time.Hour              // 24小时
+	refreshTokenExpiration := 7 * 24 * time.Hour // 7天
+
+	userService := service.NewUserService(
+		userRepo,
+		passwordResetTokenRepo,
+		db,
+		jwtSecret,
+		jwtExpiration,
+		refreshTokenExpiration,
+	)
+
 	// 初始化处理器
 	documentHandler := handler.NewDocumentHandler(documentService)
 	searchHandler := handler.NewSearchHandler(searchService)
+	aiFormatHandler := handler.NewAIFormatHandler(service.NewAIFriendlyFormatService(documentService), documentService)
+	mcpHandler := handler.NewMCPHandler(service.NewMCPService(db, searchService, documentService))
+	userHandler := handler.NewUserHandler(userService)
 
 	// 初始化路由器
-	router := router.NewRouter(documentHandler, searchHandler)
-	r := router.SetupRoutes()
+	appRouter := router.NewRouter(documentHandler, searchHandler, aiFormatHandler, mcpHandler, userHandler, userService)
+	r := appRouter.SetupRoutes()
 
 	// 启动服务器
 	log.Printf("Server starting on port %s", serverPort)
@@ -356,5 +382,140 @@ func setupSearchIndices(db *gorm.DB) error {
 	}
 
 	log.Println("搜索索引表设置完成")
+	return nil
+}
+
+// migrateMCPTables 迁移MCP相关表
+func migrateMCPTables(db *gorm.DB) error {
+	log.Println("正在迁移MCP相关表...")
+
+	// 这里应该读取并执行SQL文件，为了简化，我们直接执行SQL
+	err := db.Exec(`
+		CREATE TABLE IF NOT EXISTS mcp_api_keys (
+			id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+			name VARCHAR(255) NOT NULL,
+			key VARCHAR(255) NOT NULL UNIQUE,
+			user_id VARCHAR(255) NOT NULL,
+			expires_at TIMESTAMP NULL,
+			last_used TIMESTAMP NULL,
+			created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+			updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+		);
+		
+		CREATE TABLE IF NOT EXISTS mcp_configs (
+			id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+			name VARCHAR(255) NOT NULL,
+			description TEXT,
+			endpoint VARCHAR(255) NOT NULL,
+			api_key VARCHAR(255) NOT NULL,
+			enabled BOOLEAN DEFAULT TRUE,
+			created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+			updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+		);
+		
+		CREATE INDEX IF NOT EXISTS idx_mcp_api_keys_key ON mcp_api_keys(key);
+		CREATE INDEX IF NOT EXISTS idx_mcp_api_keys_user_id ON mcp_api_keys(user_id);
+	`).Error
+
+	if err != nil {
+		return fmt.Errorf("failed to create MCP tables: %v", err)
+	}
+
+	log.Println("MCP表迁移完成")
+	return nil
+}
+
+// migrateUserTables 迁移用户相关表
+func migrateUserTables(db *gorm.DB) error {
+	log.Println("正在迁移用户相关表...")
+
+	// 这里应该读取并执行SQL文件，为了简化，我们直接执行SQL
+	err := db.Exec(`
+		CREATE TABLE IF NOT EXISTS users (
+			id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+			username VARCHAR(255) NOT NULL UNIQUE,
+			email VARCHAR(255) NOT NULL UNIQUE,
+			password_hash VARCHAR(255) NOT NULL,
+			role VARCHAR(50) NOT NULL DEFAULT 'user',
+			first_name VARCHAR(255),
+			last_name VARCHAR(255),
+			avatar VARCHAR(500),
+			is_active BOOLEAN DEFAULT TRUE,
+			last_login TIMESTAMP NULL,
+			created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+			updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+		);
+		
+		CREATE TABLE IF NOT EXISTS password_reset_tokens (
+			id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+			user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+			token VARCHAR(255) NOT NULL UNIQUE,
+			expires_at TIMESTAMP NOT NULL,
+			created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+		);
+		
+		CREATE TABLE IF NOT EXISTS user_sessions (
+			id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+			user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+			token_id VARCHAR(255) NOT NULL,
+			ip_address VARCHAR(45),
+			user_agent TEXT,
+			expires_at TIMESTAMP NOT NULL,
+			created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+		);
+		
+		CREATE INDEX IF NOT EXISTS idx_users_username ON users(username);
+		CREATE INDEX IF NOT EXISTS idx_users_email ON users(email);
+		CREATE INDEX IF NOT EXISTS idx_users_role ON users(role);
+		CREATE INDEX IF NOT EXISTS idx_users_is_active ON users(is_active);
+		
+		CREATE INDEX IF NOT EXISTS idx_password_reset_tokens_token ON password_reset_tokens(token);
+		CREATE INDEX IF NOT EXISTS idx_password_reset_tokens_user_id ON password_reset_tokens(user_id);
+		CREATE INDEX IF NOT EXISTS idx_password_reset_tokens_expires_at ON password_reset_tokens(expires_at);
+		
+		CREATE INDEX IF NOT EXISTS idx_user_sessions_token_id ON user_sessions(token_id);
+		CREATE INDEX IF NOT EXISTS idx_user_sessions_user_id ON user_sessions(user_id);
+		CREATE INDEX IF NOT EXISTS idx_user_sessions_expires_at ON user_sessions(expires_at);
+	`).Error
+
+	if err != nil {
+		return fmt.Errorf("failed to create user tables: %v", err)
+	}
+
+	// 插入默认管理员账户
+	// 密码为: admin123 (在生产环境中应该立即更改)
+	err = db.Exec(`
+		INSERT INTO users (username, email, password_hash, role, first_name, last_name, is_active)
+		VALUES (
+			'admin',
+			'admin@example.com',
+			'$2a$10$DM2vz77tvx4bvCExQMhQm.TfLu.jhduTCLdZxHmOfNk7IXR0d8jV.', -- bcrypt哈希的 "admin123"
+			'admin',
+			'System',
+			'Administrator',
+			TRUE
+		) ON CONFLICT (username) DO NOTHING
+	`).Error
+
+	if err != nil {
+		return fmt.Errorf("failed to insert default admin user: %v", err)
+	}
+
+	// 更新mcp_api_keys表，添加enabled字段（如果不存在）
+	err = db.Exec(`
+		DO $$
+		BEGIN
+			IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'mcp_api_keys' AND column_name = 'enabled') THEN
+				ALTER TABLE mcp_api_keys ADD COLUMN enabled BOOLEAN DEFAULT TRUE;
+			END IF;
+		END
+		$$;
+	`).Error
+
+	if err != nil {
+		return fmt.Errorf("failed to add enabled column to mcp_api_keys: %v", err)
+	}
+
+	log.Println("用户表迁移完成")
 	return nil
 }

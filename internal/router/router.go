@@ -2,6 +2,8 @@ package router
 
 import (
 	"github.com/UniverseHappiness/LAST-doc/internal/handler"
+	"github.com/UniverseHappiness/LAST-doc/internal/middleware"
+	"github.com/UniverseHappiness/LAST-doc/internal/service"
 
 	"github.com/gin-gonic/gin"
 )
@@ -10,13 +12,21 @@ import (
 type Router struct {
 	documentHandler *handler.DocumentHandler
 	searchHandler   *handler.SearchHandler
+	aiFormatHandler *handler.AIFormatHandler
+	mcpHandler      *handler.MCPHandler
+	userHandler     *handler.UserHandler
+	authMiddleware  *middleware.AuthMiddleware
 }
 
 // NewRouter 创建路由器实例
-func NewRouter(documentHandler *handler.DocumentHandler, searchHandler *handler.SearchHandler) *Router {
+func NewRouter(documentHandler *handler.DocumentHandler, searchHandler *handler.SearchHandler, aiFormatHandler *handler.AIFormatHandler, mcpHandler *handler.MCPHandler, userHandler *handler.UserHandler, userService service.UserService) *Router {
 	return &Router{
 		documentHandler: documentHandler,
 		searchHandler:   searchHandler,
+		aiFormatHandler: aiFormatHandler,
+		mcpHandler:      mcpHandler,
+		userHandler:     userHandler,
+		authMiddleware:  middleware.NewAuthMiddleware(userService),
 	}
 }
 
@@ -29,7 +39,7 @@ func (r *Router) SetupRoutes() *gin.Engine {
 	// 使用中间件
 	router.Use(gin.Logger())
 	router.Use(gin.Recovery())
-	router.Use(corsMiddleware())
+	router.Use(middleware.CORS())
 
 	// 健康检查
 	router.GET("/health", func(c *gin.Context) {
@@ -105,24 +115,88 @@ func (r *Router) SetupRoutes() *gin.Engine {
 			// 删除指定版本的索引
 			search.DELETE("/documents/:id/versions/:version/index", r.searchHandler.DeleteIndexByVersion)
 		}
+
+		// AI友好格式路由
+		aiFormat := v1.Group("/ai-format")
+		{
+			// 获取文档的结构化内容
+			aiFormat.GET("/documents/:id/versions/:version/structured", r.aiFormatHandler.StructuredContent)
+
+			// 生成LLM优化格式
+			aiFormat.POST("/documents/:id/versions/:version/llm", r.aiFormatHandler.GenerateLLMFormat)
+
+			// 生成多粒度文档表示
+			aiFormat.GET("/documents/:id/versions/:version/multigranularity", r.aiFormatHandler.GenerateMultiGranularityRepresentation)
+
+			// 注入上下文
+			aiFormat.POST("/documents/:id/versions/:version/context", r.aiFormatHandler.InjectContext)
+
+			// 获取AI友好格式列表
+			aiFormat.GET("/documents/:id/versions/:version", r.aiFormatHandler.GetAIFriendlyFormats)
+		}
+
+		// MCP协议路由
+		router.POST("/mcp", r.mcpHandler.HandleMCPRequest)
+		router.GET("/mcp", r.mcpHandler.SendMessage) // 也支持GET方式
+
+		// MCP配置和管理路由
+		mcp := v1.Group("/mcp")
+		{
+			// 获取MCP配置
+			mcp.GET("/config", r.mcpHandler.GetMCPConfig)
+
+			// 测试MCP连接
+			mcp.GET("/test", r.mcpHandler.TestMCPConnection)
+
+			// API密钥管理
+			keys := mcp.Group("/keys")
+			keys.Use(r.authMiddleware.RequireAuth()) // 需要认证
+			{
+				keys.POST("", r.mcpHandler.CreateAPIKey)
+				keys.GET("", r.mcpHandler.GetAPIKeys)
+				keys.DELETE("/:id", r.mcpHandler.DeleteAPIKey)
+			}
+		}
+
+		// 用户认证路由
+		auth := v1.Group("/auth")
+		{
+			// 用户注册
+			auth.POST("/register", r.userHandler.Register)
+
+			// 用户登录
+			auth.POST("/login", r.userHandler.Login)
+
+			// 刷新令牌
+			auth.POST("/refresh", r.userHandler.RefreshToken)
+
+			// 请求密码重置
+			auth.POST("/password/reset-request", r.userHandler.RequestPasswordReset)
+
+			// 重置密码
+			auth.POST("/password/reset", r.userHandler.ResetPassword)
+		}
+
+		// 用户管理路由
+		users := v1.Group("/users")
+		users.Use(r.authMiddleware.RequireAuth()) // 需要认证
+		{
+			// 当前用户信息
+			users.GET("/profile", r.userHandler.GetProfile)
+			users.PUT("/profile", r.userHandler.UpdateProfile)
+			users.POST("/change-password", r.userHandler.ChangePassword)
+
+			// 管理员功能
+			admin := users.Group("")
+			admin.Use(r.authMiddleware.RequireAdmin()) // 需要管理员权限
+			{
+				admin.GET("", r.userHandler.ListUsers)
+				admin.GET("/:id", r.userHandler.GetUser)
+				admin.PUT("/:id", r.userHandler.UpdateUser)
+				admin.DELETE("/:id", r.userHandler.DeleteUser)
+			}
+		}
 	}
 
 	return router
-}
-
-// corsMiddleware CORS中间件
-func corsMiddleware() gin.HandlerFunc {
-	return func(c *gin.Context) {
-		c.Header("Access-Control-Allow-Origin", "*")
-		c.Header("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS")
-		c.Header("Access-Control-Allow-Headers", "Content-Type, Authorization")
-		c.Header("Access-Control-Max-Age", "86400")
-
-		if c.Request.Method == "OPTIONS" {
-			c.AbortWithStatus(204)
-			return
-		}
-
-		c.Next()
-	}
 }

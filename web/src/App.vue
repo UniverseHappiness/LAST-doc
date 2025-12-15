@@ -1,9 +1,45 @@
 <template>
   <div id="app" class="container-fluid">
-    <div class="row">
+    <!-- 调试信息 -->
+    <div class="debug-info" style="position: fixed; top: 0; right: 0; background: rgba(0,0,0,0.8); color: white; padding: 10px; z-index: 9999; font-size: 12px;">
+      认证状态: {{ isAuthenticated }}<br>
+      当前视图: {{ currentView }}<br>
+      用户: {{ currentUser?.username }}<br>
+      文档数量: {{ documents.length }}
+    </div>
+    
+    <!-- 登录视图 -->
+    <LoginView v-if="currentView === 'login'" @login-success="handleLoginSuccess" @show-register="currentView = 'register'" />
+    
+    <!-- 注册视图 -->
+    <RegisterView v-if="currentView === 'register'" @register-success="handleRegisterSuccess" @back-to-login="currentView = 'login'" />
+    
+    <div class="row" v-if="isAuthenticated">
       <!-- 侧边栏 -->
       <div class="col-md-3 sidebar p-4">
-        <h4 class="mb-4">AI技术文档库</h4>
+        <div class="d-flex justify-content-between align-items-center mb-4">
+          <h4>AI技术文档库</h4>
+          <div class="dropdown">
+            <button class="btn btn-sm btn-outline-secondary dropdown-toggle" type="button" id="userDropdown" data-bs-toggle="dropdown" aria-expanded="false">
+              <i class="bi bi-person-circle me-1"></i>{{ currentUser.username }}
+            </button>
+            <ul class="dropdown-menu" aria-labelledby="userDropdown">
+              <li><a class="dropdown-item" href="#" @click="currentView = 'profile'">
+                <i class="bi bi-person me-2"></i>个人资料
+              </a></li>
+              <li><a class="dropdown-item" href="#" @click="currentView = 'api-keys'">
+                <i class="bi bi-key me-2"></i>API密钥
+              </a></li>
+              <li v-if="currentUser.role === 'admin'"><a class="dropdown-item" href="#" @click="currentView = 'user-management'">
+                <i class="bi bi-people me-2"></i>用户管理
+              </a></li>
+              <li><hr class="dropdown-divider"></li>
+              <li><a class="dropdown-item" href="#" @click="logout">
+                <i class="bi bi-box-arrow-right me-2"></i>退出登录
+              </a></li>
+            </ul>
+          </div>
+        </div>
         <ul class="nav flex-column">
           <li class="nav-item mb-2">
             <a class="nav-link"
@@ -27,6 +63,22 @@
                :class="{ active: currentView === 'upload' }"
                @click="currentView = 'upload'">
               <i class="bi bi-cloud-upload me-2"></i>上传文档
+            </a>
+          </li>
+          <li class="nav-item mb-2">
+            <a class="nav-link"
+               href="#"
+               :class="{ active: currentView === 'ai-format' }"
+               @click="currentView = 'ai-format'">
+              <i class="bi bi-cpu me-2"></i>AI友好格式
+            </a>
+          </li>
+          <li class="nav-item mb-2">
+            <a class="nav-link"
+               href="#"
+               :class="{ active: currentView === 'mcp' }"
+               @click="currentView = 'mcp'">
+              <i class="bi bi-plug me-2"></i>MCP协议
             </a>
           </li>
         </ul>
@@ -150,6 +202,34 @@
           @back="currentView = 'list'"
         />
         
+        <!-- AI友好格式视图 -->
+        <AIFormatView
+          v-if="currentView === 'ai-format'"
+        />
+        
+        <!-- MCP协议视图 -->
+        <MCPView
+          v-if="currentView === 'mcp'"
+        />
+        
+        <!-- 用户资料视图 -->
+        <UserProfileView
+          v-if="currentView === 'profile'"
+          :current-user="currentUser"
+          @profile-updated="handleProfileUpdated"
+        />
+        
+        <!-- API密钥管理视图 -->
+        <APIKeyManagementView
+          v-if="currentView === 'api-keys'"
+          :current-user="currentUser"
+        />
+        
+        <!-- 用户管理视图（仅管理员） -->
+        <UserManagementView
+          v-if="currentView === 'user-management' && currentUser.role === 'admin'"
+        />
+        
         <!-- 文档版本查看视图 -->
         <DocumentVersionView
           v-if="currentView === 'version-view' && selectedDocumentId"
@@ -200,7 +280,15 @@ import DocumentVersionView from './views/DocumentVersionView.vue'
 import UploadView from './views/UploadView.vue'
 import VersionManagementView from './views/VersionManagementView.vue'
 import SearchView from './views/SearchView.vue'
+import AIFormatView from './views/AIFormatView.vue'
+import MCPView from './views/MCPView.vue'
+import LoginView from './views/LoginView.vue'
+import RegisterView from './views/RegisterView.vue'
+import UserProfileView from './views/UserProfileView.vue'
+import APIKeyManagementView from './views/APIKeyManagementView.vue'
+import UserManagementView from './views/UserManagementView.vue'
 import { useDocumentService } from './utils/documentService'
+import { useAuth } from './composables/useAuth'
 
 export default {
   name: 'App',
@@ -211,10 +299,26 @@ export default {
     DocumentVersionView,
     UploadView,
     VersionManagementView,
-    SearchView
+    SearchView,
+    AIFormatView,
+    MCPView,
+    LoginView,
+    RegisterView,
+    UserProfileView,
+    APIKeyManagementView,
+    UserManagementView
   },
   setup() {
-    const currentView = ref('list')
+    // 认证相关
+    const {
+      isAuthenticated,
+      currentUser,
+      login,
+      logout,
+      checkAuthStatus
+    } = useAuth()
+    
+    const currentView = ref('login')
     const documents = ref([])
     const documentVersions = ref([])
     const selectedDocument = ref(null)
@@ -475,6 +579,63 @@ export default {
       }
     }
     
+    // 处理登录成功
+    const handleLoginSuccess = async (user) => {
+      console.log('DEBUG: 收到登录成功事件', user)
+      
+      // 显示登录成功消息
+      showNotification('登录成功！', 'success')
+      
+      // 强制触发认证状态更新
+      await checkAuthStatus()
+      
+      // 使用一个技巧来强制Vue重新渲染
+      // 创建一个临时的空对象来触发响应式更新
+      const temp = {}
+      temp.forceUpdate = Math.random()
+      
+      // 切换视图
+      currentView.value = 'list'
+      
+      // 使用 nextTick 等待视图更新
+      await nextTick()
+      
+      // 获取文档列表
+      try {
+        await fetchDocuments()
+        console.log('DEBUG: 登录后文档列表获取成功，数量:', documents.value?.length)
+      } catch (error) {
+        console.error('登录后获取文档列表失败:', error)
+      }
+      
+      console.log('DEBUG: 登录成功处理完成', {
+        isAuthenticated: isAuthenticated.value,
+        currentUser: currentUser.value,
+        currentView: currentView.value,
+        documentsLength: documents.value?.length
+      })
+    }
+    
+    // 处理注册成功
+    const handleRegisterSuccess = (user) => {
+      console.log('DEBUG: 注册成功', user)
+      currentView.value = 'login'
+      showNotification('注册成功！请登录', 'success')
+    }
+    
+    // 处理登出
+    const handleLogout = () => {
+      logout()
+      currentView.value = 'login'
+      showNotification('已退出登录', 'info')
+    }
+    
+    // 处理个人资料更新
+    const handleProfileUpdated = (updatedUser) => {
+      console.log('DEBUG: 个人资料更新成功', updatedUser)
+      showNotification('个人资料更新成功！', 'success')
+    }
+    
     // 监听selectedVersion的变化
     watch(() => selectedVersion.value, (newValue, oldValue) => {
       console.log('DEBUG: selectedVersion变化 - 新值:', newValue, '旧值:', oldValue)
@@ -495,9 +656,30 @@ export default {
       return selectedVersion.value
     })
     
-    // 组件挂载时获取文档列表
-    onMounted(() => {
-      fetchDocuments()
+    // 初始化应用
+    onMounted(async () => {
+      // 清除可能存在的标记
+      sessionStorage.removeItem('justLoggedIn')
+      
+      console.log('DEBUG: 应用初始化，检查认证状态')
+      
+      // 检查认证状态
+      const isAuth = await checkAuthStatus()
+      console.log('DEBUG: 初始认证状态', isAuth, '当前用户:', currentUser.value)
+      
+      if (isAuth) {
+        console.log('DEBUG: 用户已认证，显示文档列表')
+        currentView.value = 'list'
+        try {
+          await fetchDocuments()
+          console.log('DEBUG: 文档列表获取成功，数量:', documents.value?.length)
+        } catch (error) {
+          console.error('获取文档列表失败:', error)
+        }
+      } else {
+        console.log('DEBUG: 用户未认证，显示登录页面')
+        currentView.value = 'login'
+      }
     })
     
     return {
@@ -506,36 +688,45 @@ export default {
       documentVersions,
       selectedDocument,
       selectedDocumentId,
+      selectedVersion,
+      selectedVersionComputed,
       isLoading,
       isUploading,
       searchQuery,
+      notification,
+      globalVersionState,
       filters,
       pagination,
       uploadForm,
+      isAuthenticated,
+      currentUser,
       fetchDocuments,
+      fetchDocumentVersions,
       uploadDocument,
       updateDocument,
       deleteDocument,
       deleteDocumentVersion,
-      viewDocument,
-      viewDocumentVersions,
-      viewDocumentVersion,
-      downloadDocument,
-      downloadVersion,
-      editDocument,
-      handleDocumentUpdated,
-      globalVersionState,
-      notification,
-      showNotification,
-      hideNotification,
       searchDocuments,
       applyFilters,
       changePage,
       getPaginationPages,
+      viewDocument,
+      viewDocumentVersions,
+      viewDocumentVersion,
       fileSelected,
+      downloadDocument,
+      downloadVersion,
+      editDocument,
+      handleDocumentUpdated,
+      showNotification,
+      hideNotification,
       dragOver,
       dragLeave,
-      dropFile
+      dropFile,
+      handleLoginSuccess,
+      handleRegisterSuccess,
+      logout: handleLogout,
+      handleProfileUpdated
     }
   }
 }
