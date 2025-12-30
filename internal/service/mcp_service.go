@@ -67,7 +67,7 @@ func (s *mcpService) HandleRequest(ctx context.Context, req *model.MCPRequest, a
 	// 验证API密钥
 	_, err := s.ValidateAPIKey(apiKey)
 	if err != nil {
-		return s.createErrorResponse(req.ID, -32600, "Invalid API key", nil)
+		return s.createErrorResponse(req.ID, req.Method, -32600, "Invalid API key", nil)
 	}
 
 	switch req.Method {
@@ -78,7 +78,7 @@ func (s *mcpService) HandleRequest(ctx context.Context, req *model.MCPRequest, a
 	case "tools/call":
 		return s.handleCallTool(ctx, req)
 	default:
-		return s.createErrorResponse(req.ID, -32601, "Method not found", nil)
+		return s.createErrorResponse(req.ID, req.Method, -32601, "Method not found", nil)
 	}
 }
 
@@ -135,6 +135,28 @@ func (s *mcpService) ListTools(ctx context.Context, params *model.MCPToolListPar
 			},
 		},
 		{
+			Name:        "get_documents_by_library",
+			Description: "根据所属库名称获取文档列表",
+			InputSchema: map[string]interface{}{
+				"type": "object",
+				"properties": map[string]interface{}{
+					"library": map[string]interface{}{
+						"type":        "string",
+						"description": "库名称",
+					},
+					"page": map[string]interface{}{
+						"type":        "integer",
+						"description": "页码，默认为1",
+					},
+					"size": map[string]interface{}{
+						"type":        "integer",
+						"description": "每页数量，默认为10",
+					},
+				},
+				"required": []string{"library"},
+			},
+		},
+		{
 			Name:        "get_document_content",
 			Description: "获取指定文档的详细内容",
 			InputSchema: map[string]interface{}{
@@ -164,6 +186,8 @@ func (s *mcpService) CallTool(ctx context.Context, params *model.MCPToolCallPara
 	switch params.Name {
 	case "search_documents":
 		return s.searchDocumentsTool(ctx, params.Arguments)
+	case "get_documents_by_library":
+		return s.getDocumentsByLibraryTool(ctx, params.Arguments)
 	case "get_document_content":
 		return s.getDocumentContentTool(ctx, params.Arguments)
 	default:
@@ -308,22 +332,22 @@ func (s *mcpService) handleInitialize(ctx context.Context, req *model.MCPRequest
 	if req.Params != nil {
 		paramBytes, err := json.Marshal(req.Params)
 		if err != nil {
-			return s.createErrorResponse(req.ID, -32602, "Invalid params", nil)
+			return s.createErrorResponse(req.ID, "initialize", -32602, "Invalid params", nil)
 		}
 
 		err = json.Unmarshal(paramBytes, &params)
 		if err != nil {
-			return s.createErrorResponse(req.ID, -32602, "Invalid params", nil)
+			return s.createErrorResponse(req.ID, "initialize", -32602, "Invalid params", nil)
 		}
 	}
 
 	// 调用初始化方法
 	result, err := s.Initialize(ctx, &params)
 	if err != nil {
-		return s.createErrorResponse(req.ID, -32603, "Internal error", err.Error())
+		return s.createErrorResponse(req.ID, "initialize", -32603, "Internal error", err.Error())
 	}
 
-	return s.createSuccessResponse(req.ID, result)
+	return s.createSuccessResponse(req.ID, "initialize", result)
 }
 
 // handleListTools 处理工具列表请求
@@ -333,22 +357,22 @@ func (s *mcpService) handleListTools(ctx context.Context, req *model.MCPRequest)
 	if req.Params != nil {
 		paramBytes, err := json.Marshal(req.Params)
 		if err != nil {
-			return s.createErrorResponse(req.ID, -32602, "Invalid params", nil)
+			return s.createErrorResponse(req.ID, "tools/list", -32602, "Invalid params", nil)
 		}
 
 		err = json.Unmarshal(paramBytes, &params)
 		if err != nil {
-			return s.createErrorResponse(req.ID, -32602, "Invalid params", nil)
+			return s.createErrorResponse(req.ID, "tools/list", -32602, "Invalid params", nil)
 		}
 	}
 
 	// 调用工具列表方法
 	result, err := s.ListTools(ctx, &params)
 	if err != nil {
-		return s.createErrorResponse(req.ID, -32603, "Internal error", err.Error())
+		return s.createErrorResponse(req.ID, "tools/list", -32603, "Internal error", err.Error())
 	}
 
-	return s.createSuccessResponse(req.ID, result)
+	return s.createSuccessResponse(req.ID, "tools/list", result)
 }
 
 // handleCallTool 处理工具调用请求
@@ -358,22 +382,22 @@ func (s *mcpService) handleCallTool(ctx context.Context, req *model.MCPRequest) 
 	if req.Params != nil {
 		paramBytes, err := json.Marshal(req.Params)
 		if err != nil {
-			return s.createErrorResponse(req.ID, -32602, "Invalid params", nil)
+			return s.createErrorResponse(req.ID, "tools/call", -32602, "Invalid params", nil)
 		}
 
 		err = json.Unmarshal(paramBytes, &params)
 		if err != nil {
-			return s.createErrorResponse(req.ID, -32602, "Invalid params", nil)
+			return s.createErrorResponse(req.ID, "tools/call", -32602, "Invalid params", nil)
 		}
 	}
 
 	// 调用工具方法
 	result, err := s.CallTool(ctx, &params)
 	if err != nil {
-		return s.createErrorResponse(req.ID, -32603, "Internal error", err.Error())
+		return s.createErrorResponse(req.ID, "tools/call", -32603, "Internal error", err.Error())
 	}
 
-	return s.createSuccessResponse(req.ID, result)
+	return s.createSuccessResponse(req.ID, "tools/call", result)
 }
 
 // searchDocumentsTool 搜索文档工具
@@ -447,6 +471,7 @@ func (s *mcpService) searchDocumentsTool(ctx context.Context, args map[string]in
 			Name:        item.Title,
 			Type:        "", // 需要从文档信息中获取
 			Version:     item.Version,
+			Library:     item.Library, // 添加所属库
 			Score:       float64(item.Score),
 			Content:     item.Content,
 			ContentType: item.ContentType,
@@ -458,8 +483,72 @@ func (s *mcpService) searchDocumentsTool(ctx context.Context, args map[string]in
 	resultText := fmt.Sprintf("搜索查询: %s\n找到 %d 个相关文档:\n\n", query, len(documents))
 	for i, doc := range documents {
 		resultText += fmt.Sprintf("%d. %s (版本: %s, 类型: %s)\n", i+1, doc.Name, doc.Version, doc.Type)
+		resultText += fmt.Sprintf("   所属库: %s\n", doc.Library)
 		resultText += fmt.Sprintf("   相关度: %.2f\n", doc.Score)
 		resultText += fmt.Sprintf("   内容片段: %s...\n\n", s.truncateText(doc.Content, 200))
+	}
+
+	return &model.MCPToolResult{
+		Content: []interface{}{
+			model.MCPTextContent{
+				Type: "text",
+				Text: resultText,
+			},
+		},
+		IsError: false,
+	}, nil
+}
+
+// getDocumentsByLibraryTool 根据库获取文档列表工具
+func (s *mcpService) getDocumentsByLibraryTool(ctx context.Context, args map[string]interface{}) (*model.MCPToolResult, error) {
+	// 解析参数
+	library, ok := args["library"].(string)
+	if !ok || library == "" {
+		return &model.MCPToolResult{
+			Content: []interface{}{
+				model.MCPTextContent{
+					Type: "text",
+					Text: "库名称不能为空",
+				},
+			},
+			IsError: true,
+		}, nil
+	}
+
+	page := 1
+	if pageArg, ok := args["page"].(float64); ok && pageArg > 0 {
+		page = int(pageArg)
+	}
+
+	size := 10
+	if sizeArg, ok := args["size"].(float64); ok && sizeArg > 0 {
+		size = int(sizeArg)
+	}
+
+	// 调用文档服务获取文档列表
+	filters := map[string]interface{}{}
+	filters["library"] = library
+	documents, total, err := s.documentService.GetDocuments(ctx, page, size, filters)
+	if err != nil {
+		return &model.MCPToolResult{
+			Content: []interface{}{
+				model.MCPTextContent{
+					Type: "text",
+					Text: fmt.Sprintf("获取文档列表失败: %v", err),
+				},
+			},
+			IsError: true,
+		}, nil
+	}
+
+	// 构造结果文本
+	resultText := fmt.Sprintf("库: %s\n找到 %d 个文档 (第 %d 页, 每页 %d 个):\n\n", library, total, page, size)
+	for i, doc := range documents {
+		resultText += fmt.Sprintf("%d. %s\n", (page-1)*size+i+1, doc.Name)
+		resultText += fmt.Sprintf("   文档ID: %s\n", doc.ID)
+		resultText += fmt.Sprintf("   类型: %s\n", doc.Type)
+		resultText += fmt.Sprintf("   版本: %s\n", doc.Version)
+		resultText += fmt.Sprintf("   描述: %s\n\n", doc.Description)
 	}
 
 	return &model.MCPToolResult{
@@ -490,28 +579,41 @@ func (s *mcpService) getDocumentContentTool(ctx context.Context, args map[string
 	}
 
 	version, _ := args["version"].(string)
+	log.Printf("DEBUG: getDocumentContentTool called with documentID=%s, version='%s'", documentID, version)
 
 	// 获取文档版本
 	var docVersion *model.DocumentVersion
 	var err error
 
 	if version != "" {
+		log.Printf("DEBUG: Fetching specific version: documentID=%s, version=%s", documentID, version)
 		docVersion, err = s.documentService.GetDocumentByVersion(ctx, documentID, version)
+		log.Printf("DEBUG: GetDocumentByVersion result: err=%v, docVersion=%v", err, docVersion != nil)
 	} else {
 		// 获取最新版本
-		docVersion, err = s.documentService.GetDocumentByVersion(ctx, documentID, "")
-		if err != nil {
-			// 如果获取最新版本失败，尝试获取文档版本列表
-			versions, listErr := s.documentService.GetDocumentVersions(ctx, documentID)
-			if listErr == nil && len(versions) > 0 {
-				docVersion = versions[0] // 获取第一个版本
-			} else {
-				err = listErr
-			}
+		log.Printf("DEBUG: Attempting to get latest version for documentID=%s", documentID)
+		// 注意：version为空字符串时，应改用GetLatestVersion，而不是GetDocumentByVersion
+		versions, listErr := s.documentService.GetDocumentVersions(ctx, documentID)
+		log.Printf("DEBUG: GetDocumentVersions result: err=%v, count=%d, versions=%v", listErr, len(versions), versions)
+
+		if listErr != nil {
+			log.Printf("ERROR: Failed to get document versions: %v", listErr)
+			err = fmt.Errorf("failed to get document versions: %v", listErr)
+			docVersion = nil
+		} else if len(versions) == 0 {
+			// 版本列表为空，说明文档版本已被删除或创建失败
+			log.Printf("ERROR: No document versions found for documentID=%s", documentID)
+			log.Printf("ERROR: This could indicate data inconsistency between search_indices and document_versions tables")
+			err = fmt.Errorf("no document versions found for documentID %s (document may have been deleted or indexing failed)", documentID)
+			docVersion = nil
+		} else {
+			docVersion = versions[0] // 获取第一个版本
+			log.Printf("DEBUG: Selected first version: documentID=%s, version=%s", docVersion.DocumentID, docVersion.Version)
 		}
 	}
 
 	if err != nil {
+		log.Printf("ERROR: Failed to get document version: %v", err)
 		return &model.MCPToolResult{
 			Content: []interface{}{
 				model.MCPTextContent{
@@ -523,22 +625,31 @@ func (s *mcpService) getDocumentContentTool(ctx context.Context, args map[string
 		}, nil
 	}
 
-	content := docVersion.Content
-
-	if err != nil {
+	// 关键修复：检查 docVersion 是否为 nil
+	if docVersion == nil {
+		log.Printf("ERROR: docVersion is nil after successful version lookup")
 		return &model.MCPToolResult{
 			Content: []interface{}{
 				model.MCPTextContent{
 					Type: "text",
-					Text: fmt.Sprintf("获取文档内容失败: %v", err),
+					Text: fmt.Sprintf("文档版本对象为空，无法获取内容"),
 				},
 			},
 			IsError: true,
 		}, nil
 	}
 
+	log.Printf("DEBUG: Successfully retrieved docVersion: documentID=%s, version=%s, contentLength=%d",
+		docVersion.DocumentID, docVersion.Version, len(docVersion.Content))
+
+	content := docVersion.Content
+
 	// 构造结果文本
-	resultText := fmt.Sprintf("文档ID: %s\n版本: %s\n\n内容:\n%s", documentID, version, content)
+	displayVersion := version
+	if displayVersion == "" && docVersion != nil {
+		displayVersion = docVersion.Version
+	}
+	resultText := fmt.Sprintf("文档ID: %s\n版本: %s\n\n内容:\n%s", documentID, displayVersion, content)
 
 	return &model.MCPToolResult{
 		Content: []interface{}{
@@ -552,19 +663,21 @@ func (s *mcpService) getDocumentContentTool(ctx context.Context, args map[string
 }
 
 // createSuccessResponse 创建成功响应
-func (s *mcpService) createSuccessResponse(id interface{}, result interface{}) (*model.MCPResponse, error) {
+func (s *mcpService) createSuccessResponse(id interface{}, method string, result interface{}) (*model.MCPResponse, error) {
 	return &model.MCPResponse{
 		JSONRPC: "2.0",
 		ID:      id,
+		Method:  method,
 		Result:  result,
 	}, nil
 }
 
 // createErrorResponse 创建错误响应
-func (s *mcpService) createErrorResponse(id interface{}, code int, message string, data interface{}) (*model.MCPResponse, error) {
+func (s *mcpService) createErrorResponse(id interface{}, method string, code int, message string, data interface{}) (*model.MCPResponse, error) {
 	return &model.MCPResponse{
 		JSONRPC: "2.0",
 		ID:      id,
+		Method:  method,
 		Error: &model.MCPError{
 			Code:    code,
 			Message: message,

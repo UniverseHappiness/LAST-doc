@@ -33,26 +33,20 @@ func (h *MCPHandler) HandleMCPRequest(c *gin.Context) {
 	// 读取请求体
 	body, err := io.ReadAll(c.Request.Body)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"error": "Failed to read request body",
-		})
+		h.sendSSEError(c, "Failed to read request body")
 		return
 	}
 
 	// 解析MCP请求
 	var req model.MCPRequest
 	if err := json.Unmarshal(body, &req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"error": "Invalid JSON-RPC request",
-		})
+		h.sendSSEError(c, "Invalid JSON-RPC request")
 		return
 	}
 
 	// 验证JSON-RPC版本
 	if req.JSONRPC != "2.0" {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"error": "Unsupported JSON-RPC version",
-		})
+		h.sendSSEError(c, "Unsupported JSON-RPC version")
 		return
 	}
 
@@ -67,9 +61,7 @@ func (h *MCPHandler) HandleMCPRequest(c *gin.Context) {
 	}
 
 	if apiKey == "" {
-		c.JSON(http.StatusUnauthorized, gin.H{
-			"error": "API key is required",
-		})
+		h.sendSSEError(c, "API key is required")
 		return
 	}
 
@@ -78,14 +70,83 @@ func (h *MCPHandler) HandleMCPRequest(c *gin.Context) {
 	resp, err := h.mcpService.HandleRequest(ctx, &req, apiKey)
 	if err != nil {
 		log.Printf("Error handling MCP request: %v", err)
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"error": "Internal server error",
-		})
+		h.sendSSEError(c, "Internal server error")
 		return
 	}
 
-	// 返回MCP响应
-	c.JSON(http.StatusOK, resp)
+	// 返回SSE流式响应
+	h.sendSSEResponse(c, resp)
+}
+
+// sendSSEResponse 发送SSE格式的响应
+func (h *MCPHandler) sendSSEResponse(c *gin.Context, resp *model.MCPResponse) {
+	// 设置SSE响应头
+	c.Header("Content-Type", "text/event-stream")
+	c.Header("Cache-Control", "no-cache")
+	c.Header("Connection", "keep-alive")
+	c.Header("X-Accel-Buffering", "no") // 禁用nginx缓冲
+
+	// 构建SSE消息
+	jsonData, err := json.Marshal(resp)
+	if err != nil {
+		log.Printf("Failed to marshal response: %v", err)
+		return
+	}
+
+	// 构建响应对象，只包含result或error中的一个
+	var sseResp map[string]interface{}
+	json.Unmarshal(jsonData, &sseResp)
+
+	// 移除method字段
+	delete(sseResp, "method")
+
+	// 只保留result或error中的一个（CoStrict的要求）
+	if resp.Error != nil {
+		delete(sseResp, "result") // 删除result，只保留error
+	} else {
+		delete(sseResp, "error") // 删除error，只保留result
+	}
+
+	// 删除null值
+	for key, value := range sseResp {
+		if value == nil {
+			delete(sseResp, key)
+		}
+	}
+
+	// 重新序列化
+	jsonData, _ = json.Marshal(sseResp)
+
+	// 构造SSE消息格式
+	sseMessage := fmt.Sprintf("event: message\ndata: %s\n\n", jsonData)
+
+	// 写入响应
+	c.Writer.WriteString(sseMessage)
+	c.Writer.Flush()
+}
+
+// sendSSEError 发送SSE格式的错误响应
+func (h *MCPHandler) sendSSEError(c *gin.Context, errorMessage string) {
+	// 设置SSE响应头
+	c.Header("Content-Type", "text/event-stream")
+	c.Header("Cache-Control", "no-cache")
+	c.Header("Connection", "keep-alive")
+	c.Header("X-Accel-Buffering", "no")
+
+	// 构建错误响应
+	errorResp := map[string]interface{}{
+		"jsonrpc": "2.0",
+		"error": map[string]interface{}{
+			"code":    -32000,
+			"message": errorMessage,
+		},
+	}
+
+	jsonData, _ := json.Marshal(errorResp)
+	sseMessage := fmt.Sprintf("event: message\ndata: %s\n\n", jsonData)
+
+	c.Writer.WriteString(sseMessage)
+	c.Writer.Flush()
 }
 
 // GetMCPConfig 获取MCP配置

@@ -512,10 +512,16 @@ func (s *searchService) convertToSearchResults(indices []*model.SearchIndex) []m
 
 		// 解析元数据
 		var metadata map[string]interface{}
+		library := ""
 		if idx.Metadata != "" {
 			if err := json.Unmarshal([]byte(idx.Metadata), &metadata); err != nil {
 				log.Printf("Error unmarshaling metadata: %v", err)
 				metadata = make(map[string]interface{})
+			} else {
+				// 从元数据中提取库信息
+				if libraryVal, ok := metadata["document_library"].(string); ok {
+					library = libraryVal
+				}
 			}
 		} else {
 			metadata = make(map[string]interface{})
@@ -525,6 +531,7 @@ func (s *searchService) convertToSearchResults(indices []*model.SearchIndex) []m
 			ID:          idx.ID,
 			DocumentID:  idx.DocumentID,
 			Version:     idx.Version,
+			Library:     library,
 			Content:     idx.Content,
 			Snippet:     snippet,
 			Score:       idx.Score,

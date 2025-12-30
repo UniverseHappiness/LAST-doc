@@ -16,6 +16,7 @@ type MCPRequest struct {
 type MCPResponse struct {
 	JSONRPC string      `json:"jsonrpc"` // 固定为"2.0"
 	ID      interface{} `json:"id"`      // 对应请求的ID
+	Method  string      `json:"method"`  // 响应的方法名（为了兼容性）
 	Result  interface{} `json:"result"`  // 成功时的结果
 	Error   *MCPError   `json:"error"`   // 错误时的错误信息
 }
@@ -159,6 +160,7 @@ type MCPSearchDocument struct {
 	Name        string  `json:"name"`
 	Type        string  `json:"type"`
 	Version     string  `json:"version"`
+	Library     string  `json:"library"`
 	Score       float64 `json:"score"`
 	Content     string  `json:"content"`
 	ContentType string  `json:"content_type"`

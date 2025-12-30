@@ -73,6 +73,7 @@ type SearchResult struct {
 	DocumentID  string                 `json:"document_id"`
 	Version     string                 `json:"version"`
 	Title       string                 `json:"title"`
+	Library     string                 `json:"library"` // 所属库
 	Content     string                 `json:"content"`
 	Snippet     string                 `json:"snippet"`
 	Score       float32                `json:"score"`
