@@ -2,6 +2,7 @@ package main
 
 import (
 	// "context"
+	"context"
 	"fmt"
 	"log"
 	"os"
@@ -52,6 +53,12 @@ func main() {
 		log.Fatalf("Failed to migrate user tables: %v", err)
 	}
 
+	// 执行监控表迁移
+	err = migrateMonitorTables(db)
+	if err != nil {
+		log.Fatalf("Failed to migrate monitor tables: %v", err)
+	}
+
 	// 创建存储目录
 	if err := os.MkdirAll(baseStorageDir, 0755); err != nil {
 		log.Fatalf("Failed to create storage directory: %v", err)
@@ -64,6 +71,8 @@ func main() {
 	searchIndexRepo := repository.NewSearchIndexRepository(db)
 	userRepo := repository.NewUserRepository(db)
 	passwordResetTokenRepo := repository.NewPasswordResetTokenRepository(db)
+	metricsRepo := repository.NewMetricsRepository(db)
+	logRepo := repository.NewLogRepository(db)
 
 	// 初始化服务
 	storageService := service.NewLocalStorageService(baseStorageDir)
@@ -115,22 +124,45 @@ func main() {
 		refreshTokenExpiration,
 	)
 
+	// 初始化监控服务
+	monitorService := service.NewMonitorService(metricsRepo, logRepo, db)
+
 	// 初始化处理器
 	documentHandler := handler.NewDocumentHandler(documentService)
 	searchHandler := handler.NewSearchHandler(searchService)
 	aiFormatHandler := handler.NewAIFormatHandler(service.NewAIFriendlyFormatService(documentService), documentService)
 	mcpHandler := handler.NewMCPHandler(service.NewMCPService(db, searchService, documentService))
 	userHandler := handler.NewUserHandler(userService)
+	monitorHandler := handler.NewMonitorHandler(monitorService)
 
 	// 初始化路由器
-	appRouter := router.NewRouter(documentHandler, searchHandler, aiFormatHandler, mcpHandler, userHandler, userService)
+	appRouter := router.NewRouter(documentHandler, searchHandler, aiFormatHandler, mcpHandler, userHandler, monitorHandler, userService, monitorService)
 	r := appRouter.SetupRoutes()
+
+	// 启动指标收集定时任务（每30秒收集一次）
+	go startMetricsCollection(monitorService)
 
 	// 启动服务器
 	log.Printf("Server starting on port %s", serverPort)
 	log.Printf("Storage directory: %s", baseStorageDir)
 	if err := r.Run(":" + serverPort); err != nil {
 		log.Fatalf("Failed to start server: %v", err)
+	}
+}
+
+// startMetricsCollection 启动指标收集定时任务
+func startMetricsCollection(monitorService service.MonitorService) {
+	ticker := time.NewTicker(30 * time.Second)
+	defer ticker.Stop()
+
+	for {
+		select {
+		case <-ticker.C:
+			ctx := context.Background()
+			if _, err := monitorService.CollectMetrics(ctx); err != nil {
+				log.Printf("Failed to collect metrics: %v", err)
+			}
+		}
 	}
 }
 
@@ -517,5 +549,67 @@ func migrateUserTables(db *gorm.DB) error {
 	}
 
 	log.Println("用户表迁移完成")
+	return nil
+}
+
+// migrateMonitorTables 迁移监控相关表
+func migrateMonitorTables(db *gorm.DB) error {
+	log.Println("正在迁移监控相关表...")
+
+	err := db.Exec(`
+		CREATE TABLE IF NOT EXISTS system_metrics (
+			id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+			timestamp TIMESTAMP NOT NULL,
+			cpu_usage DOUBLE PRECISION,
+			cpu_cores INTEGER,
+			goroutine_count INTEGER,
+			memory_alloc BIGINT,
+			memory_total_alloc BIGINT,
+			memory_sys BIGINT,
+			memory_heap_alloc BIGINT,
+			memory_heap_sys BIGINT,
+			gc_num INTEGER,
+			gc_pause_total BIGINT,
+			gc_next BIGINT,
+			request_count BIGINT,
+			error_count BIGINT,
+			average_latency BIGINT,
+			db_connections INTEGER,
+			db_max_open INTEGER,
+			db_in_use INTEGER,
+			db_idle INTEGER,
+			created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+		);
+		
+		CREATE TABLE IF NOT EXISTS log_entries (
+			id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+			timestamp TIMESTAMP NOT NULL,
+			level VARCHAR(50) NOT NULL,
+			service VARCHAR(255) NOT NULL,
+			message TEXT NOT NULL,
+			method VARCHAR(10),
+			path VARCHAR(500),
+			user_id VARCHAR(255),
+			status_code INTEGER,
+			latency BIGINT,
+			ip_address VARCHAR(45),
+			user_agent TEXT,
+			error TEXT,
+			stack TEXT,
+			created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+		);
+		
+		CREATE INDEX IF NOT EXISTS idx_system_metrics_timestamp ON system_metrics(timestamp);
+		CREATE INDEX IF NOT EXISTS idx_log_entries_timestamp ON log_entries(timestamp);
+		CREATE INDEX IF NOT EXISTS idx_log_entries_level ON log_entries(level);
+		CREATE INDEX IF NOT EXISTS idx_log_entries_service ON log_entries(service);
+		CREATE INDEX IF NOT EXISTS idx_log_entries_user_id ON log_entries(user_id);
+	`).Error
+
+	if err != nil {
+		return fmt.Errorf("failed to create monitor tables: %v", err)
+	}
+
+	log.Println("监控表迁移完成")
 	return nil
 }

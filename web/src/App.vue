@@ -33,6 +33,9 @@
               <li v-if="currentUser.role === 'admin'"><a class="dropdown-item" href="#" @click="currentView = 'user-management'">
                 <i class="bi bi-people me-2"></i>用户管理
               </a></li>
+              <li v-if="currentUser.role === 'admin'"><a class="dropdown-item" href="#" @click="currentView = 'monitor'">
+                <i class="bi bi-activity me-2"></i>系统监控
+              </a></li>
               <li><hr class="dropdown-divider"></li>
               <li><a class="dropdown-item" href="#" @click="logout">
                 <i class="bi bi-box-arrow-right me-2"></i>退出登录
@@ -79,6 +82,14 @@
                :class="{ active: currentView === 'mcp' }"
                @click="currentView = 'mcp'">
               <i class="bi bi-plug me-2"></i>MCP协议
+            </a>
+          </li>
+          <li class="nav-item mb-2" v-if="currentUser.role === 'admin'">
+            <a class="nav-link"
+               href="#"
+               :class="{ active: currentView === 'monitor' }"
+               @click="currentView = 'monitor'">
+              <i class="bi bi-activity me-2"></i>系统监控
             </a>
           </li>
         </ul>
@@ -212,6 +223,11 @@
           v-if="currentView === 'mcp'"
         />
         
+        <!-- 系统监控视图（仅管理员） -->
+        <MonitorView
+          v-if="currentView === 'monitor' && currentUser.role === 'admin'"
+        />
+        
         <!-- 用户资料视图 -->
         <UserProfileView
           v-if="currentView === 'profile'"
@@ -287,6 +303,7 @@ import RegisterView from './views/RegisterView.vue'
 import UserProfileView from './views/UserProfileView.vue'
 import APIKeyManagementView from './views/APIKeyManagementView.vue'
 import UserManagementView from './views/UserManagementView.vue'
+import MonitorView from './views/MonitorView.vue'
 import { useDocumentService } from './utils/documentService'
 import { useAuth } from './composables/useAuth'
 
@@ -294,6 +311,7 @@ export default {
   name: 'App',
   components: {
     DocumentListView,
+    MonitorView,
     DocumentView,
     DocumentEditView,
     DocumentVersionView,

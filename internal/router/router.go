@@ -10,23 +10,27 @@ import (
 
 // Router 路由器
 type Router struct {
-	documentHandler *handler.DocumentHandler
-	searchHandler   *handler.SearchHandler
-	aiFormatHandler *handler.AIFormatHandler
-	mcpHandler      *handler.MCPHandler
-	userHandler     *handler.UserHandler
-	authMiddleware  *middleware.AuthMiddleware
+	documentHandler   *handler.DocumentHandler
+	searchHandler     *handler.SearchHandler
+	aiFormatHandler   *handler.AIFormatHandler
+	mcpHandler        *handler.MCPHandler
+	userHandler       *handler.UserHandler
+	monitorHandler    *handler.MonitorHandler
+	authMiddleware    *middleware.AuthMiddleware
+	loggingMiddleware *middleware.LoggingMiddleware
 }
 
 // NewRouter 创建路由器实例
-func NewRouter(documentHandler *handler.DocumentHandler, searchHandler *handler.SearchHandler, aiFormatHandler *handler.AIFormatHandler, mcpHandler *handler.MCPHandler, userHandler *handler.UserHandler, userService service.UserService) *Router {
+func NewRouter(documentHandler *handler.DocumentHandler, searchHandler *handler.SearchHandler, aiFormatHandler *handler.AIFormatHandler, mcpHandler *handler.MCPHandler, userHandler *handler.UserHandler, monitorHandler *handler.MonitorHandler, userService service.UserService, monitorService service.MonitorService) *Router {
 	return &Router{
-		documentHandler: documentHandler,
-		searchHandler:   searchHandler,
-		aiFormatHandler: aiFormatHandler,
-		mcpHandler:      mcpHandler,
-		userHandler:     userHandler,
-		authMiddleware:  middleware.NewAuthMiddleware(userService),
+		documentHandler:   documentHandler,
+		searchHandler:     searchHandler,
+		aiFormatHandler:   aiFormatHandler,
+		mcpHandler:        mcpHandler,
+		userHandler:       userHandler,
+		monitorHandler:    monitorHandler,
+		authMiddleware:    middleware.NewAuthMiddleware(userService),
+		loggingMiddleware: middleware.NewLoggingMiddleware(monitorService),
 	}
 }
 
@@ -40,6 +44,7 @@ func (r *Router) SetupRoutes() *gin.Engine {
 	router.Use(gin.Logger())
 	router.Use(gin.Recovery())
 	router.Use(middleware.CORS())
+	router.Use(r.loggingMiddleware.LogRequest()) // 添加日志记录中间件
 
 	// 健康检查
 	router.GET("/health", func(c *gin.Context) {
@@ -195,6 +200,36 @@ func (r *Router) SetupRoutes() *gin.Engine {
 				admin.PUT("/:id", r.userHandler.UpdateUser)
 				admin.DELETE("/:id", r.userHandler.DeleteUser)
 			}
+		}
+
+		// 系统监控路由（仅管理员）
+		monitor := v1.Group("/monitor")
+		monitor.Use(r.authMiddleware.RequireAuth())  // 需要认证
+		monitor.Use(r.authMiddleware.RequireAdmin()) // 需要管理员权限
+		{
+			// 获取当前系统指标
+			monitor.GET("/metrics/current", r.monitorHandler.GetCurrentMetrics)
+
+			// 获取指标历史数据
+			monitor.GET("/metrics/history", r.monitorHandler.GetMetricsHistory)
+
+			// 获取指标报告
+			monitor.GET("/metrics/report", r.monitorHandler.GetMetricsReport)
+
+			// 获取系统状态
+			monitor.GET("/status", r.monitorHandler.GetSystemStatus)
+
+			// 获取日志列表
+			monitor.GET("/logs", r.monitorHandler.GetLogs)
+
+			// 获取日志统计
+			monitor.GET("/logs/stats", r.monitorHandler.GetLogStats)
+
+			// 获取性能报告
+			monitor.GET("/performance", r.monitorHandler.GetPerformanceReport)
+
+			// 清理旧数据
+			monitor.POST("/cleanup", r.monitorHandler.CleanupOldData)
 		}
 	}
 
