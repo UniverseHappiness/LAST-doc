@@ -29,6 +29,7 @@ type DocumentService interface {
 	GetDocumentVersionCount(ctx context.Context, documentID string) (int64, error)
 	GetDocumentMetadata(ctx context.Context, documentID string) (map[string]interface{}, error)
 	UpdateDocument(ctx context.Context, id string, updates map[string]interface{}) error
+	UpdateDocumentVersion(ctx context.Context, documentID, oldVersion string, updates map[string]interface{}) error
 	BuildDocumentIndex(ctx context.Context, documentID, version string) error
 	BuildAllMissingIndexes(ctx context.Context) error
 }
@@ -202,10 +203,17 @@ func (s *documentService) GetDocument(ctx context.Context, id string) (*model.Do
 		return nil, err
 	}
 
-	// 获取最新版本并更新文档的版本字段
+	// 获取最新版本并更新文档的所有相关字段
 	latestVersion, err := s.versionRepo.GetLatestVersion(ctx, document.ID)
 	if err == nil && latestVersion != nil {
+		// 更新文档的所有相关字段为最新版本的数据
 		document.Version = latestVersion.Version
+		document.FilePath = latestVersion.FilePath
+		document.FileSize = latestVersion.FileSize
+		document.Status = latestVersion.Status
+		document.Description = latestVersion.Description
+		document.Content = latestVersion.Content
+		document.UpdatedAt = latestVersion.UpdatedAt
 	}
 
 	return document, nil
@@ -222,8 +230,14 @@ func (s *documentService) GetDocuments(ctx context.Context, page, size int, filt
 	for _, doc := range documents {
 		latestVersion, err := s.versionRepo.GetLatestVersion(ctx, doc.ID)
 		if err == nil && latestVersion != nil {
-			// 更新文档的版本为最新版本
+			// 更新文档的所有相关字段为最新版本的数据
 			doc.Version = latestVersion.Version
+			doc.FilePath = latestVersion.FilePath
+			doc.FileSize = latestVersion.FileSize
+			doc.Status = latestVersion.Status
+			doc.Description = latestVersion.Description
+			doc.Content = latestVersion.Content
+			doc.UpdatedAt = latestVersion.UpdatedAt
 		}
 	}
 
@@ -315,6 +329,31 @@ func (s *documentService) GetDocumentMetadata(ctx context.Context, documentID st
 // GetDocumentVersionCount 获取文档的版本数量
 func (s *documentService) GetDocumentVersionCount(ctx context.Context, documentID string) (int64, error) {
 	return s.versionRepo.Count(ctx, documentID)
+}
+
+// UpdateDocumentVersion 更新文档版本
+func (s *documentService) UpdateDocumentVersion(ctx context.Context, documentID, oldVersion string, updates map[string]interface{}) error {
+	// 验证文档版本存在
+	_, err := s.versionRepo.GetByDocumentIDAndVersion(ctx, documentID, oldVersion)
+	if err != nil {
+		return fmt.Errorf("文档版本不存在: %v", err)
+	}
+
+	// 如果是更新版本号，需要检查新版本号是否已存在
+	if newVersion, ok := updates["version"]; ok && newVersion != oldVersion {
+		newVersionStr, ok := newVersion.(string)
+		if !ok {
+			return fmt.Errorf("版本号格式错误")
+		}
+
+		existingVersion, err := s.versionRepo.GetByDocumentIDAndVersion(ctx, documentID, newVersionStr)
+		if err == nil && existingVersion != nil {
+			return fmt.Errorf("版本号 %s 已存在", newVersionStr)
+		}
+	}
+
+	// 更新文档版本
+	return s.versionRepo.UpdateByDocumentIDAndVersion(ctx, documentID, oldVersion, updates)
 }
 
 // saveFile 保存文件
@@ -605,11 +644,4 @@ func isValidDocumentCategory(category model.DocumentCategory) bool {
 	default:
 		return false
 	}
-}
-
-// StorageService 存储服务接口
-type StorageService interface {
-	SaveFile(ctx context.Context, file *multipart.FileHeader, path string) error
-	DeleteFile(ctx context.Context, path string) error
-	GetFile(ctx context.Context, path string) ([]byte, error)
 }

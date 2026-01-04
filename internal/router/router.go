@@ -16,12 +16,15 @@ type Router struct {
 	mcpHandler        *handler.MCPHandler
 	userHandler       *handler.UserHandler
 	monitorHandler    *handler.MonitorHandler
+	healthHandler     *handler.HealthHandler
+	backupHandler     *handler.BackupHandler
+	metricsHandler    *handler.MetricsHandler
 	authMiddleware    *middleware.AuthMiddleware
 	loggingMiddleware *middleware.LoggingMiddleware
 }
 
 // NewRouter 创建路由器实例
-func NewRouter(documentHandler *handler.DocumentHandler, searchHandler *handler.SearchHandler, aiFormatHandler *handler.AIFormatHandler, mcpHandler *handler.MCPHandler, userHandler *handler.UserHandler, monitorHandler *handler.MonitorHandler, userService service.UserService, monitorService service.MonitorService) *Router {
+func NewRouter(documentHandler *handler.DocumentHandler, searchHandler *handler.SearchHandler, aiFormatHandler *handler.AIFormatHandler, mcpHandler *handler.MCPHandler, userHandler *handler.UserHandler, monitorHandler *handler.MonitorHandler, healthHandler *handler.HealthHandler, backupHandler *handler.BackupHandler, userService service.UserService, monitorService service.MonitorService) *Router {
 	return &Router{
 		documentHandler:   documentHandler,
 		searchHandler:     searchHandler,
@@ -29,6 +32,9 @@ func NewRouter(documentHandler *handler.DocumentHandler, searchHandler *handler.
 		mcpHandler:        mcpHandler,
 		userHandler:       userHandler,
 		monitorHandler:    monitorHandler,
+		healthHandler:     healthHandler,
+		backupHandler:     backupHandler,
+		metricsHandler:    handler.NewMetricsHandler(),
 		authMiddleware:    middleware.NewAuthMiddleware(userService),
 		loggingMiddleware: middleware.NewLoggingMiddleware(monitorService),
 	}
@@ -46,12 +52,14 @@ func (r *Router) SetupRoutes() *gin.Engine {
 	router.Use(middleware.CORS())
 	router.Use(r.loggingMiddleware.LogRequest()) // 添加日志记录中间件
 
-	// 健康检查
-	router.GET("/health", func(c *gin.Context) {
-		c.JSON(200, gin.H{
-			"status": "ok",
-		})
-	})
+	// 健康检查路由（用于Kubernetes探针）
+	router.GET("/health", r.healthHandler.CheckHealth)
+	router.GET("/health/live", r.healthHandler.LivenessProbe)
+	router.GET("/health/ready", r.healthHandler.ReadinessProbe)
+	router.GET("/health/circuit-breakers", r.healthHandler.CircuitBreakers)
+
+	// Prometheus metrics 端点
+	router.GET("/metrics", r.metricsHandler.ServeMetrics)
 
 	// API版本分组
 	v1 := router.Group("/api/v1")
@@ -82,6 +90,9 @@ func (r *Router) SetupRoutes() *gin.Engine {
 
 			// 获取指定版本的文档
 			documents.GET("/:id/versions/:version", r.documentHandler.GetDocumentByVersion)
+
+			// 更新指定版本的文档
+			documents.PUT("/:id/versions/:version", r.documentHandler.UpdateDocumentVersion)
 
 			// 删除指定版本的文档
 			documents.DELETE("/:id/versions/:version", r.documentHandler.DeleteDocumentVersion)
@@ -230,6 +241,24 @@ func (r *Router) SetupRoutes() *gin.Engine {
 
 			// 清理旧数据
 			monitor.POST("/cleanup", r.monitorHandler.CleanupOldData)
+		}
+
+		// 备份管理路由（仅管理员）
+		backup := v1.Group("/backup")
+		backup.Use(r.authMiddleware.RequireAuth())  // 需要认证
+		backup.Use(r.authMiddleware.RequireAdmin()) // 需要管理员权限
+		{
+			// 创建备份
+			backup.POST("/create", r.backupHandler.CreateBackup)
+
+			// 获取备份列表
+			backup.GET("/list", r.backupHandler.ListBackups)
+
+			// 恢复备份
+			backup.POST("/restore/:backupId", r.backupHandler.RestoreBackup)
+
+			// 删除备份
+			backup.DELETE("/:backupId", r.backupHandler.DeleteBackup)
 		}
 	}
 

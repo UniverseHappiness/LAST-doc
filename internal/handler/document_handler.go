@@ -400,6 +400,66 @@ func (h *DocumentHandler) DeleteDocumentVersion(c *gin.Context) {
 	})
 }
 
+// UpdateDocumentVersion 更新文档版本
+func (h *DocumentHandler) UpdateDocumentVersion(c *gin.Context) {
+	documentID := c.Param("id")
+	version := c.Param("version")
+
+	if documentID == "" {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"code":    400,
+			"message": "文档ID不能为空",
+		})
+		return
+	}
+
+	if version == "" {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"code":    400,
+			"message": "版本号不能为空",
+		})
+		return
+	}
+
+	// 解析更新数据
+	var updates map[string]any
+	if err := c.ShouldBindJSON(&updates); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"code":    400,
+			"message": "请求数据格式错误: " + err.Error(),
+		})
+		return
+	}
+
+	// 不允许更新ID、文档ID、创建时间等关键字段
+	delete(updates, "id")
+	delete(updates, "document_id")
+	delete(updates, "created_at")
+	delete(updates, "file_path")
+	delete(updates, "file_size")
+
+	if len(updates) == 0 {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"code":    400,
+			"message": "没有可更新的字段",
+		})
+		return
+	}
+
+	if err := h.documentService.UpdateDocumentVersion(context.Background(), documentID, version, updates); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"code":    500,
+			"message": "更新文档版本失败: " + err.Error(),
+		})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"code":    200,
+		"message": "更新成功",
+	})
+}
+
 // DownloadDocument 下载文档
 func (h *DocumentHandler) DownloadDocument(c *gin.Context) {
 	id := c.Param("id")

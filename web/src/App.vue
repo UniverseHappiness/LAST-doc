@@ -1,15 +1,17 @@
 <template>
   <div id="app" class="container-fluid">
-    <!-- 调试信息 -->
-    <div class="debug-info" style="position: fixed; top: 0; right: 0; background: rgba(0,0,0,0.8); color: white; padding: 10px; z-index: 9999; font-size: 12px;">
-      认证状态: {{ isAuthenticated }}<br>
-      当前视图: {{ currentView }}<br>
-      用户: {{ currentUser?.username }}<br>
-      文档数量: {{ documents.length }}
-    </div>
-    
     <!-- 登录视图 -->
-    <LoginView v-if="currentView === 'login'" @login-success="handleLoginSuccess" @show-register="currentView = 'register'" />
+    <LoginView v-if="currentView === 'login'" @login-success="handleLoginSuccess" @show-register="currentView = 'register'" @show-forgot-password="currentView = 'forgot-password'" />
+    
+    <!-- 忘记密码视图 -->
+    <ForgotPasswordView
+      v-if="currentView === 'forgot-password'"
+      @back-to-login="currentView = 'login'"
+      @use-token="handleUseToken"
+    />
+    
+    <!-- 重置密码视图 -->
+    <ResetPasswordView v-if="currentView === 'reset-password'" :token="resetToken" @back-to-login="currentView = 'login'" />
     
     <!-- 注册视图 -->
     <RegisterView v-if="currentView === 'register'" @register-success="handleRegisterSuccess" @back-to-login="currentView = 'login'" />
@@ -166,11 +168,13 @@
           @view-document="viewDocument"
           @view-versions="viewDocumentVersions"
           @delete-document="deleteDocument"
+          @navigate-to-upload="currentView = 'upload'"
         />
         
         <!-- 文档检索视图 -->
         <SearchView
           v-if="currentView === 'search'"
+          @view-document="handleSearchViewDocument"
         />
         
         <!-- 文档查看视图 -->
@@ -209,6 +213,8 @@
           :selected-document="selectedDocument"
           :document-versions="documentVersions"
           @view-version="viewDocumentVersion"
+          @edit-version="editDocumentVersion"
+          @add-version="addDocumentVersion"
           @delete-version="deleteDocumentVersion"
           @back="currentView = 'list'"
         />
@@ -256,13 +262,6 @@
           @back="currentView = 'versions'"
           @download-version="downloadVersion"
         />
-        <!-- 调试信息 -->
-        <div v-if="currentView === 'version-view'" class="alert alert-info mt-3">
-          <strong>调试信息:</strong><br>
-          selectedDocumentId: {{ selectedDocumentId }}<br>
-          selectedVersion: {{ selectedVersion }}<br>
-          selectedVersionComputed: {{ selectedVersionComputed }}
-        </div>
       </div>
     </div>
     
@@ -300,10 +299,13 @@ import AIFormatView from './views/AIFormatView.vue'
 import MCPView from './views/MCPView.vue'
 import LoginView from './views/LoginView.vue'
 import RegisterView from './views/RegisterView.vue'
+import ForgotPasswordView from './views/ForgotPasswordView.vue'
+import ResetPasswordView from './views/ResetPasswordView.vue'
 import UserProfileView from './views/UserProfileView.vue'
 import APIKeyManagementView from './views/APIKeyManagementView.vue'
 import UserManagementView from './views/UserManagementView.vue'
 import MonitorView from './views/MonitorView.vue'
+import axios from 'axios'
 import { useDocumentService } from './utils/documentService'
 import { useAuth } from './composables/useAuth'
 
@@ -322,11 +324,19 @@ export default {
     MCPView,
     LoginView,
     RegisterView,
+    ForgotPasswordView,
+    ResetPasswordView,
     UserProfileView,
     APIKeyManagementView,
     UserManagementView
   },
   setup() {
+    // 处理使用令牌重置密码
+    const handleUseToken = (token) => {
+      resetToken.value = token;
+      currentView.value = 'reset-password';
+    };
+    
     // 认证相关
     const {
       isAuthenticated,
@@ -342,6 +352,7 @@ export default {
     const selectedDocument = ref(null)
     const selectedDocumentId = ref(null)
     const selectedVersion = ref(null)
+    const resetToken = ref('')
     const isLoading = ref(false)
     const isUploading = ref(false)
     const searchQuery = ref('')
@@ -392,6 +403,7 @@ export default {
       fetchDocumentVersions,
       uploadDocument,
       updateDocument,
+      updateDocumentVersion,
       deleteDocument,
       deleteDocumentVersion,
       searchDocuments,
@@ -531,6 +543,130 @@ export default {
         console.error('下载文档版本失败:', error)
         alert('下载文档版本失败: ' + error.message)
       }
+    }
+    
+    // 编辑文档版本
+    const editDocumentVersion = async (version) => {
+      console.log('DEBUG: 尝试编辑文档版本', version)
+      try {
+        await updateDocumentVersion(version)
+        // 重新获取文档版本列表
+        await fetchDocumentVersions(version.document_id)
+        alert('编辑版本成功')
+      } catch (error) {
+        console.error('编辑文档版本失败:', error)
+        alert('编辑文档版本失败: ' + (error.response?.data?.message || error.message))
+      }
+    }
+    
+    // 添加文档新版本
+    const addDocumentVersion = async (formData) => {
+      console.log('DEBUG: 尝试添加文档新版本', formData)
+      try {
+        isLoading.value = true
+        
+        const response = await axios.post('/api/v1/documents', formData, {
+          headers: {
+            'Content-Type': 'multipart/form-data'
+          }
+        })
+        
+        console.log('DEBUG: 添加新版本成功:', response.data)
+        alert('添加新版本成功')
+        
+        // 重新获取文档版本列表
+        await fetchDocumentVersions(selectedDocument.value.id)
+      } catch (error) {
+        console.error('添加文档新版本失败:', error)
+        alert('添加文档新版本失败: ' + (error.response?.data?.message || error.message))
+      } finally {
+        isLoading.value = false
+      }
+    }
+    
+    // 处理文档检索中的查看文档
+    const handleSearchViewDocument = async (data) => {
+      console.log('DEBUG: 处理文档检索查看文档 - 完整数据:', data)
+      console.log('DEBUG: 搜索结果中的版本号:', data.version, '文档ID:', data.documentId)
+      
+      selectedDocumentId.value = data.documentId
+      
+      let versionToUse = data.version
+      
+      // 如果版本是"latest"，需要先获取实际的最新版本号
+      if (data.version === 'latest') {
+        console.log('DEBUG: 检测到latest版本，尝试获取实际版本号')
+        try {
+          const response = await fetch(`/api/v1/documents/${data.documentId}/versions/latest`)
+          const result = await response.json()
+          
+          if (result.code === 200 && result.data) {
+            versionToUse = result.data.version
+            console.log('DEBUG: 获取到实际版本号:', versionToUse)
+            selectedVersion.value = versionToUse
+          } else {
+            console.error('DEBUG: 获取最新版本失败 - 响应:', result)
+            alert('获取最新版本失败: ' + (result.message || '未知错误'))
+            return
+          }
+        } catch (err) {
+          console.error('获取最新版本失败:', err)
+          alert('获取最新版本失败，请稍后重试')
+          return
+        }
+      }
+      
+      // 如果版本为空或无效，使用最新版本
+      if (!versionToUse || versionToUse === '') {
+        console.log('DEBUG: 版本号为空，尝试获取最新版本')
+        try {
+          const response = await fetch(`/api/v1/documents/${data.documentId}/versions/latest`)
+          const result = await response.json()
+          
+          if (result.code === 200 && result.data) {
+            versionToUse = result.data.version
+            console.log('DEBUG: 获取到最新版本号作为fallback:', versionToUse)
+          }
+        } catch (err) {
+          console.error('获取最新版本失败:', err)
+        }
+      }
+      
+      // 验证版本是否有效
+      try {
+        const response = await fetch(`/api/v1/documents/${data.documentId}/versions/${versionToUse}`)
+        const result = await response.json()
+        console.log('DEBUG: 验证版本号 - 版本:', versionToUse, '响应:', result)
+        
+        if (result.code !== 200) {
+          console.error('DEBUG: 版本号无效，尝试获取最新版本')
+          alert(`版本号 ${versionToUse} 无效，将使用最新版本`)
+          
+          const latestResponse = await fetch(`/api/v1/documents/${data.documentId}/versions/latest`)
+          const latestResult = await latestResponse.json()
+          
+          if (latestResult.code === 200 && latestResult.data) {
+            versionToUse = latestResult.data.version
+            console.log('DEBUG: 使用最新版本号:', versionToUse)
+          }
+        }
+      } catch (err) {
+        console.error('DEBUG: 验证版本失败:', err)
+      }
+      
+      // 设置选中的版本号
+      selectedVersion.value = versionToUse
+      console.log('DEBUG: 最终选择的版本号:', selectedVersion.value)
+      
+      // 设置全局状态
+      globalVersionState.documentId = data.documentId
+      globalVersionState.version = versionToUse
+      globalVersionState.isSet = true
+      console.log('DEBUG: 全局状态已设置:', globalVersionState)
+      
+      // 切换到版本查看视图
+      currentView.value = 'version-view'
+      console.log('DEBUG: 切换到版本查看视图')
     }
     
     // 编辑文档
@@ -708,6 +844,7 @@ export default {
       selectedDocumentId,
       selectedVersion,
       selectedVersionComputed,
+      resetToken,
       isLoading,
       isUploading,
       searchQuery,
@@ -731,9 +868,12 @@ export default {
       viewDocument,
       viewDocumentVersions,
       viewDocumentVersion,
+      handleSearchViewDocument,
       fileSelected,
       downloadDocument,
       downloadVersion,
+      addDocumentVersion,
+      editDocumentVersion,
       editDocument,
       handleDocumentUpdated,
       showNotification,
@@ -744,7 +884,8 @@ export default {
       handleLoginSuccess,
       handleRegisterSuccess,
       logout: handleLogout,
-      handleProfileUpdated
+      handleProfileUpdated,
+      handleUseToken
     }
   }
 }

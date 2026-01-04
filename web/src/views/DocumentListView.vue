@@ -47,7 +47,7 @@
     <div v-else class="text-center py-5">
       <i class="bi bi-file-earmark-text" style="font-size: 3rem;"></i>
       <p class="mt-3">暂无文档</p>
-      <button class="btn btn-primary" @click="$emit('navigate-to-upload')">上传文档</button>
+      <button class="btn btn-primary" @click="handleUploadClick">上传文档</button>
     </div>
     
     <!-- 分页 -->
@@ -100,6 +100,11 @@ export default {
     // 处理搜索
     const handleSearch = () => {
       emit('search', localSearchQuery.value)
+    }
+    
+    // 处理上传文档点击
+    const handleUploadClick = () => {
+      emit('navigate-to-upload')
     }
     
     // 获取状态徽章样式
@@ -165,6 +170,7 @@ export default {
     return {
       localSearchQuery,
       handleSearch,
+      handleUploadClick,
       getStatusBadgeClass,
       getStatusText,
       getCategoryBadgeClass,

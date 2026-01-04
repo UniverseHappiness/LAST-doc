@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/UniverseHappiness/LAST-doc/internal/handler"
 	"github.com/UniverseHappiness/LAST-doc/internal/model"
 	"github.com/UniverseHappiness/LAST-doc/internal/service"
 	"github.com/gin-gonic/gin"
@@ -30,13 +31,17 @@ func (m *LoggingMiddleware) LogRequest() gin.HandlerFunc {
 		// 处理请求
 		c.Next()
 
-		// 计算请求耗时
-		latency := time.Since(start).Milliseconds()
+		// 计算请求耗时（毫秒和秒）
+		latencyMs := time.Since(start).Milliseconds()
+		latencySec := time.Since(start).Seconds()
 
 		// 获取请求信息
 		method := c.Request.Method
 		path := c.Request.URL.Path
 		statusCode := c.Writer.Status()
+
+		// 记录 Prometheus metrics（使用秒）
+		handler.RecordRequest(method, path, statusCode, latencySec)
 
 		// 获取用户ID（从context中）
 		userID, _ := c.Get("user_id")
@@ -75,7 +80,7 @@ func (m *LoggingMiddleware) LogRequest() gin.HandlerFunc {
 			UserID:     fmt.Sprintf("%v", userID),
 			Username:   usernameStr,
 			StatusCode: statusCode,
-			Latency:    latency,
+			Latency:    latencyMs,
 			IPAddress:  c.ClientIP(),
 			UserAgent:  c.Request.UserAgent(),
 		}

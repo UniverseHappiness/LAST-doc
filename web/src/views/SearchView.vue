@@ -191,7 +191,8 @@ import { useSearchService } from '../utils/searchService'
 
 export default {
   name: 'SearchView',
-  setup() {
+  emits: ['view-document'],
+  setup(props, { emit }) {
     const searchForm = reactive({
       query: '',
       searchType: 'keyword',
@@ -395,8 +396,11 @@ export default {
     
     // 查看文档
     const viewDocument = (result) => {
-      // 这里可以实现跳转到文档详情页面的逻辑
-      alert(`跳转到文档: ${result.document_id} (版本: ${result.version})`)
+      // 触发查看文档事件，由父组件处理跳转到版本查看页面
+      emit('view-document', {
+        documentId: result.document_id,
+        version: result.version
+      })
     }
     
     return {

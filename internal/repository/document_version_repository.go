@@ -18,6 +18,7 @@ type DocumentVersionRepository interface {
 	GetLatestVersion(ctx context.Context, documentID string) (*model.DocumentVersion, error)
 	GetVersionsByStatus(ctx context.Context, documentID string, status model.DocumentStatus) ([]*model.DocumentVersion, error)
 	Update(ctx context.Context, id string, updates map[string]interface{}) error
+	UpdateByDocumentIDAndVersion(ctx context.Context, documentID, version string, updates map[string]interface{}) error
 	UpdateContent(ctx context.Context, documentID, version string, content string, status model.DocumentStatus) error
 	UpdateStatus(ctx context.Context, documentID, version string, status model.DocumentStatus) error
 	Delete(ctx context.Context, id string) error
@@ -69,7 +70,7 @@ func (r *documentVersionRepository) GetByDocumentID(ctx context.Context, documen
 	var versions []*model.DocumentVersion
 	err := r.db.WithContext(ctx).
 		Where("document_id = ?", documentID).
-		Order("created_at DESC").
+		Order("updated_at DESC").
 		Find(&versions).Error
 	if err != nil {
 		return nil, err
@@ -94,7 +95,7 @@ func (r *documentVersionRepository) GetLatestVersion(ctx context.Context, docume
 	var version model.DocumentVersion
 	err := r.db.WithContext(ctx).
 		Where("document_id = ? AND status = ?", documentID, model.DocumentStatusCompleted).
-		Order("created_at DESC").
+		Order("updated_at DESC").
 		First(&version).Error
 	if err != nil {
 		return nil, err
@@ -107,7 +108,7 @@ func (r *documentVersionRepository) GetVersionsByStatus(ctx context.Context, doc
 	var versions []*model.DocumentVersion
 	err := r.db.WithContext(ctx).
 		Where("document_id = ? AND status = ?", documentID, status).
-		Order("created_at DESC").
+		Order("updated_at DESC").
 		Find(&versions).Error
 	if err != nil {
 		return nil, err
@@ -120,6 +121,14 @@ func (r *documentVersionRepository) Update(ctx context.Context, id string, updat
 	return r.db.WithContext(ctx).
 		Model(&model.DocumentVersion{}).
 		Where("id = ?", id).
+		Updates(updates).Error
+}
+
+// UpdateByDocumentIDAndVersion 根据文档ID和版本号更新文档版本
+func (r *documentVersionRepository) UpdateByDocumentIDAndVersion(ctx context.Context, documentID, version string, updates map[string]interface{}) error {
+	return r.db.WithContext(ctx).
+		Model(&model.DocumentVersion{}).
+		Where("document_id = ? AND version = ?", documentID, version).
 		Updates(updates).Error
 }
 

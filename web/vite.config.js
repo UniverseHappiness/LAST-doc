@@ -4,8 +4,8 @@ import { resolve } from 'path'
 
 export default defineConfig({
   plugins: [vue()],
-  root: 'web',
-  base: './',
+  base: '/',
+  root: './',
   server: {
     port: 3000,
     proxy: {
@@ -18,19 +18,11 @@ export default defineConfig({
   },
   resolve: {
     alias: {
-      '@': resolve(__dirname, 'web/src')
+      '@': resolve('./src')
     }
   },
   build: {
     outDir: 'dist',
-    assetsDir: 'assets',
-    rollupOptions: {
-      output: {
-        manualChunks: {
-          vue: ['vue'],
-          bootstrap: ['bootstrap', '@popperjs/core']
-        }
-      }
-    }
+    emptyOutDir: true
   }
 })

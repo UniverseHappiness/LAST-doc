@@ -72,8 +72,8 @@ export default {
       }
     },
     showForgotPassword() {
-      // 显示忘记密码提示
-      alert('忘记密码功能暂未实现，请联系管理员重置密码');
+      // 显示忘记密码页面
+      this.$emit('show-forgot-password');
     }
   },
   created() {

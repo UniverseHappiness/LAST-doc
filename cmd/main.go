@@ -47,7 +47,13 @@ func main() {
 		log.Fatalf("Failed to migrate database: %v", err)
 	}
 
-	// 执行用户表迁移
+	// 先执行MCP表迁移（必须在用户表迁移之前）
+	err = migrateMCPTables(db)
+	if err != nil {
+		log.Fatalf("Failed to migrate MCP tables: %v", err)
+	}
+
+	// 执行用户表迁移（依赖MCP表）
 	err = migrateUserTables(db)
 	if err != nil {
 		log.Fatalf("Failed to migrate user tables: %v", err)
@@ -75,7 +81,20 @@ func main() {
 	logRepo := repository.NewLogRepository(db)
 
 	// 初始化服务
-	storageService := service.NewLocalStorageService(baseStorageDir)
+	// 使用工厂方法创建存储服务，支持通过环境变量配置存储类型（local/s3/minio）
+	storageService, err := service.NewStorageServiceFromEnv()
+	if err != nil {
+		log.Fatalf("Failed to create storage service: %v", err)
+	}
+
+	// 根据存储类型打印日志
+	if s3Service, ok := storageService.(*service.S3StorageService); ok {
+		log.Printf("Using S3/MinIO storage service")
+		_ = s3Service // 避免未使用变量警告
+	} else {
+		log.Printf("Using local storage service at: %s", baseStorageDir)
+	}
+
 	parserService := service.NewParserService()
 	cacheService := service.NewMemoryCache()
 
@@ -127,6 +146,20 @@ func main() {
 	// 初始化监控服务
 	monitorService := service.NewMonitorService(metricsRepo, logRepo, db)
 
+	// 初始化健康检查服务
+	sqlDB, err := db.DB()
+	if err != nil {
+		log.Fatalf("Failed to get sql.DB: %v", err)
+	}
+	healthService := service.NewHealthService(sqlDB)
+	healthService.RegisterCheck(service.NewDatabaseHealthCheck(sqlDB))
+	healthService.RegisterCheck(service.NewStorageHealthCheck(storageService))
+
+	// 初始化备份服务
+	postgresBackup := service.NewPostgreSQLBackup(dbHost, dbPort, dbUser, dbPassword, dbName)
+	backupDir := getEnv("BACKUP_DIR", "./backups")
+	backupService := service.NewBackupService(postgresBackup, storageService, backupDir)
+
 	// 初始化处理器
 	documentHandler := handler.NewDocumentHandler(documentService)
 	searchHandler := handler.NewSearchHandler(searchService)
@@ -134,9 +167,11 @@ func main() {
 	mcpHandler := handler.NewMCPHandler(service.NewMCPService(db, searchService, documentService))
 	userHandler := handler.NewUserHandler(userService)
 	monitorHandler := handler.NewMonitorHandler(monitorService)
+	healthHandler := handler.NewHealthHandler(healthService)
+	backupHandler := handler.NewBackupHandler(backupService)
 
 	// 初始化路由器
-	appRouter := router.NewRouter(documentHandler, searchHandler, aiFormatHandler, mcpHandler, userHandler, monitorHandler, userService, monitorService)
+	appRouter := router.NewRouter(documentHandler, searchHandler, aiFormatHandler, mcpHandler, userHandler, monitorHandler, healthHandler, backupHandler, userService, monitorService)
 	r := appRouter.SetupRoutes()
 
 	// 启动指标收集定时任务（每30秒收集一次）
@@ -590,6 +625,7 @@ func migrateMonitorTables(db *gorm.DB) error {
 			method VARCHAR(10),
 			path VARCHAR(500),
 			user_id VARCHAR(255),
+			username VARCHAR(255),
 			status_code INTEGER,
 			latency BIGINT,
 			ip_address VARCHAR(45),

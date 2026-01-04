@@ -83,12 +83,16 @@
           <table class="table table-sm">
             <tbody>
               <tr>
-                <th scope="row" style="width: 120px;">版本ID</th>
+                <th scope="row" style="width: 150px;">版本ID</th>
                 <td>{{ documentVersion.id }}</td>
               </tr>
               <tr>
                 <th scope="row">文档ID</th>
                 <td>{{ documentVersion.document_id }}</td>
+              </tr>
+              <tr>
+                <th scope="row">版本号</th>
+                <td>{{ documentVersion.version }}</td>
               </tr>
               <tr>
                 <th scope="row">文件路径</th>
@@ -108,6 +112,49 @@
               </tr>
             </tbody>
           </table>
+        </div>
+        
+        <!-- 内容统计信息 -->
+        <div v-if="documentVersion.content" class="content-stats mt-4">
+          <h6 class="mb-3">内容统计</h6>
+          <div class="row g-3">
+            <div class="col-md-6">
+              <div class="stat-card p-3 border rounded">
+                <div class="stat-label text-muted">估算Token数量</div>
+                <div class="stat-value h3 mb-0">{{ estimateTokens(documentVersion.content) }}</div>
+              </div>
+            </div>
+            <div class="col-md-6">
+              <div class="stat-card p-3 border rounded">
+                <div class="stat-label text-muted">字符数量</div>
+                <div class="stat-value h3 mb-0">{{ documentVersion.content.length.toLocaleString() }}</div>
+              </div>
+            </div>
+            <div class="col-md-6">
+              <div class="stat-card p-3 border rounded">
+                <div class="stat-label text-muted">中文字符数</div>
+                <div class="stat-value h3 mb-0">{{ countChineseChars(documentVersion.content).toLocaleString() }}</div>
+              </div>
+            </div>
+            <div class="col-md-6">
+              <div class="stat-card p-3 border rounded">
+                <div class="stat-label text-muted">单词数量</div>
+                <div class="stat-value h3 mb-0">{{ countWords(documentVersion.content).toLocaleString() }}</div>
+              </div>
+            </div>
+            <div class="col-md-6">
+              <div class="stat-card p-3 border rounded">
+                <div class="stat-label text-muted">段落数量</div>
+                <div class="stat-value h3 mb-0">{{ countParagraphs(documentVersion.content).toLocaleString() }}</div>
+              </div>
+            </div>
+            <div class="col-md-6">
+              <div class="stat-card p-3 border rounded">
+                <div class="stat-label text-muted">行数</div>
+                <div class="stat-value h3 mb-0">{{ countLines(documentVersion.content).toLocaleString() }}</div>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
     </div>
@@ -413,6 +460,43 @@ export default {
       }
     }
     
+    // 估算token数量
+    const estimateTokens = (text) => {
+      if (!text) return 0
+      
+      // 简单的token估算，假设每个汉字或每个单词对应1.3个token
+      const chineseMatches = text.match(/[\u4e00-\u9fa5]/g) || []
+      const chineseCount = chineseMatches.length
+      const wordCount = text.trim().split(/\s+/).length
+      
+      return Math.floor((chineseCount + wordCount) * 1.3)
+    }
+    
+    // 统计中文字符
+    const countChineseChars = (text) => {
+      if (!text) return 0
+      const matches = text.match(/[\u4e00-\u9fa5]/g) || []
+      return matches.length
+    }
+    
+    // 统计单词数
+    const countWords = (text) => {
+      if (!text) return 0
+      return text.trim().split(/\s+/).filter(word => word.length > 0).length
+    }
+    
+    // 统计段落数
+    const countParagraphs = (text) => {
+      if (!text) return 0
+      return text.split(/\n\s*\n/).filter(para => para.trim().length > 0).length
+    }
+    
+    // 统计行数
+    const countLines = (text) => {
+      if (!text) return 0
+      return text.split('\n').length
+    }
+    
     // 格式化YAML或JSON内容
     const formatYamlOrJsonContent = (content, type) => {
       console.log('DEBUG: formatYamlOrJsonContent - type:', type, 'content前50字符:', content ? content.substring(0, 50) : '空')
@@ -452,7 +536,12 @@ export default {
       formatFileSize,
       formatDate,
       formatJsonContent,
-      formatYamlOrJsonContent
+      formatYamlOrJsonContent,
+      estimateTokens,
+      countChineseChars,
+      countWords,
+      countParagraphs,
+      countLines
     }
   }
 }

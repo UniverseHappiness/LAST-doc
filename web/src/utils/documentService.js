@@ -236,6 +236,24 @@ export function useDocumentService(state) {
     }
   }
 
+  // 更新文档版本
+  const updateDocumentVersion = async (version) => {
+    isLoading.value = true
+    try {
+      const response = await axios.put(`${apiBase}/documents/${version.document_id}/versions/${version.version}`, {
+        version: version.newVersion,
+        description: version.description
+      })
+      alert('更新成功')
+      return response.data
+    } catch (error) {
+      console.error('更新文档版本失败:', error)
+      throw error
+    } finally {
+      isLoading.value = false
+    }
+  }
+
   // 获取分页页码
   const getPaginationPages = () => {
     const totalPages = Math.ceil(pagination.total / pagination.size)
@@ -374,6 +392,7 @@ export function useDocumentService(state) {
     getLatestVersion,
     uploadDocument,
     updateDocument,
+    updateDocumentVersion,
     deleteDocument,
     deleteDocumentVersion,
     searchDocuments,

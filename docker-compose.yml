@@ -1,7 +1,7 @@
-version: '3.8'
+# version: '3.8'
 
 services:
-  # Nginx前端服务
+  # Nginx前端服务 - 负载均衡和反向代理
   nginx:
     image: nginx:alpine
     container_name: ai-doc-nginx
@@ -11,18 +11,26 @@ services:
     volumes:
       - ./nginx.conf:/etc/nginx/nginx.conf:ro
       - ./web/dist:/usr/share/nginx/html:ro
+      - ./logs/nginx:/var/log/nginx
     depends_on:
       - backend
+      - backend2
     restart: unless-stopped
     networks:
       - ai-doc-network
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost/"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
 
-  # Go后端服务
+  # Go后端服务 - 主实例（支持高可用）
   backend:
     build:
       context: .
       dockerfile: Dockerfile
-    container_name: ai-doc-backend
+    container_name: ai-doc-backend-1
     ports:
       - "8080:8080"
     environment:
@@ -33,15 +41,99 @@ services:
       - DB_NAME=ai_doc_library
       - SERVER_PORT=8080
       - STORAGE_DIR=/app/storage
+      - STORAGE_TYPE=local
+      - NODE_ID=backend-1
+      - BACKUP_DIR=/app/backups
+      - JWT_SECRET=your-secret-key-change-in-production
+      - ENABLE_HEALTH_CHECK=true
+      - TZ=Asia/Shanghai
+      - RUN_MIGRATIONS=true
     volumes:
       - ./storage:/app/storage
+      - ./backups:/app/backups
+      - ./logs/backend:/app/logs
     depends_on:
-      - postgres
+      postgres:
+        condition: service_healthy
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "/bin/sh", "/app/scripts/healthcheck.sh"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    networks:
+      - ai-doc-network
+    labels:
+      - "com.ai-doc.service=backend"
+      - "com.ai-doc.tier=application"
+
+  # Go后端服务 - 扩展实例2（用于高可用）
+  backend2:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: ai-doc-backend-2
+    ports:
+      - "8081:8080"
+    environment:
+      - DB_HOST=postgres
+      - DB_PORT=5432
+      - DB_USER=postgres
+      - DB_PASSWORD=postgres
+      - DB_NAME=ai_doc_library
+      - SERVER_PORT=8080
+      - STORAGE_DIR=/app/storage
+      - STORAGE_TYPE=local
+      - NODE_ID=backend-2
+      - BACKUP_DIR=/app/backups
+      - JWT_SECRET=your-secret-key-change-in-production
+      - ENABLE_HEALTH_CHECK=true
+      - TZ=Asia/Shanghai
+    volumes:
+      - ./storage:/app/storage
+      - ./backups:/app/backups
+      - ./logs/backend2:/app/logs
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "/bin/sh", "/app/scripts/healthcheck.sh"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    networks:
+      - ai-doc-network
+    labels:
+      - "com.ai-doc.service=backend"
+      - "com.ai-doc.tier=application"
+
+  # MinIO分布式存储服务（可选，用于存储扩展）
+  minio:
+    image: minio/minio:latest
+    container_name: ai-doc-minio
+    command: server /data --console-address ":9001"
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    environment:
+      - MINIO_ROOT_USER=minioadmin
+      - MINIO_ROOT_PASSWORD=minioadmin123
+      - MINIO_BROWSER=on
+    volumes:
+      - minio_data:/data
     restart: unless-stopped
     networks:
       - ai-doc-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      interval: 30s
+      timeout: 20s
+      retries: 3
 
-  # PostgreSQL数据库
+  # PostgreSQL数据库（主节点）
   postgres:
     image: postgres:15-alpine
     container_name: ai-doc-postgres
@@ -49,18 +141,137 @@ services:
       - POSTGRES_USER=postgres
       - POSTGRES_PASSWORD=postgres
       - POSTGRES_DB=ai_doc_library
+      - POSTGRES_REPLICATION_USER=replicator
+      - POSTGRES_REPLICATION_PASSWORD=replicator
+      - PGDATA=/var/lib/postgresql/data/pgdata
+      - TZ=Asia/Shanghai
     volumes:
       - postgres_data:/var/lib/postgresql/data
-      - ./scripts/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+      - ./scripts/init.sql:/docker-entrypoint-initdb.d/01-init.sql:ro
+      - ./scripts/setup_pgvector.sql:/docker-entrypoint-initdb.d/02-setup_pgvector.sql:ro
+      - ./scripts/backup-script.sh:/usr/local/bin/backup-script.sh:ro
+      - ./scripts/migration_add_user_tables.sql:/docker-entrypoint-initdb.d/03-migration_user_tables.sql:ro
+      - ./scripts/migration_add_mcp_tables.sql:/docker-entrypoint-initdb.d/04-migration_mcp_tables.sql:ro
+      - ./scripts/migration_add_search_indices.sql:/docker-entrypoint-initdb.d/05-migration_search_indices.sql:ro
+      - ./scripts/migration_add_document_category.sql:/docker-entrypoint-initdb.d/06-migration_document_category.sql:ro
+      - ./scripts/migration_add_type_to_document_versions.sql:/docker-entrypoint-initdb.d/07-migration_type_to_versions.sql:ro
+      - ./scripts/migration_add_enabled_to_mcp_api_keys.sql:/docker-entrypoint-initdb.d/08-migration_enabled_to_mcp_keys.sql:ro
+      - ./scripts/migration_add_username_to_logs.sql:/docker-entrypoint-initdb.d/09-migration_username_to_logs.sql:ro
     ports:
       - "5432:5432"
     restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres && psql -U postgres -c 'SELECT 1'"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
     networks:
       - ai-doc-network
+    labels:
+      - "com.ai-doc.service=postgres"
+      - "com.ai-doc.tier=database"
+
+  # Prometheus监控服务（可选）
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: ai-doc-prometheus
+    ports:
+      - "9090:9090"
+    volumes:
+      - prometheus_data:/prometheus
+    restart: unless-stopped
+    networks:
+      - ai-doc-network
+    profiles:
+      - monitoring
+    entrypoint: ["/bin/sh", "-c"]
+    command:
+      - |
+        cat > /etc/prometheus/prometheus.yml << 'EOF'
+        global:
+          scrape_interval: 15s
+          evaluation_interval: 15s
+        
+        scrape_configs:
+          - job_name: 'prometheus'
+            static_configs:
+              - targets: ['localhost:9090']
+          
+          - job_name: 'ai-doc-backend'
+            static_configs:
+              - targets:
+                  - 'ai-doc-backend-1:8080'
+                  - 'ai-doc-backend-2:8080'
+        EOF
+        /bin/prometheus --config.file=/etc/prometheus/prometheus.yml --storage.tsdb.path=/prometheus --web.enable-lifecycle
+
+  # Grafana可视化工具（可选）
+  grafana:
+    image: grafana/grafana:latest
+    container_name: ai-doc-grafana
+    ports:
+      - "3001:3000"
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+      - GF_USERS_ALLOW_SIGN_UP=false
+    volumes:
+      - grafana_data:/var/lib/grafana
+    restart: unless-stopped
+    networks:
+      - ai-doc-network
+    profiles:
+      - monitoring
+    depends_on:
+      - prometheus
+
+  # Redis缓存服务（可选，用于提高性能）
+  redis:
+    image: redis:7-alpine
+    container_name: ai-doc-redis
+    ports:
+      - "6379:6379"
+    command: redis-server --appendonly yes
+    volumes:
+      - redis_data:/data
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    networks:
+      - ai-doc-network
+    profiles:
+      - cache
 
 volumes:
   postgres_data:
+    driver: local
+    driver_opts:
+      type: none
+      o: bind
+      device: ./data/postgres
+  minio_data:
+    driver: local
+    driver_opts:
+      type: none
+      o: bind
+      device: ./data/minio
+  prometheus_data:
+    driver: local
+  grafana_data:
+    driver: local
+  redis_data:
+    driver: local
+    driver_opts:
+      type: none
+      o: bind
+      device: ./data/redis
 
 networks:
   ai-doc-network:
     driver: bridge
+    ipam:
+      config:
+        - subnet: 172.28.0.0/16

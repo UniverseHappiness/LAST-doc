@@ -1,2 +1,1 @@
-{"mcpServers":{"ai-doc-library":{"type":"streamable-http","url":"http://localhost/mcp","headers":{"API_KEY":"652c0ddc-e84c-4903-9847-40b924bd7ec2"},"disabled":false,"alwaysAllow":[]}}}
-
+{"mcpServers":{"ai-doc-library":{"type":"streamable-http","url":"http://localhost/mcp","headers":{"API_KEY":"ee8139b9-6479-4933-b695-f188b5ca9fad"},"disabled":false,"alwaysAllow":[]}}}
