@@ -38,18 +38,33 @@ func NewParserService() DocumentParserService {
 
 	// 注册各种文档类型的解析器
 	service.RegisterParser(model.DocumentTypeMarkdown, NewMarkdownParser())
-	service.RegisterParser(model.DocumentTypePDF, NewPDFGRPCParser(service.grpcClient))
-	service.RegisterParser(model.DocumentTypeDocx, NewDocxGRPCParser(service.grpcClient))
 	service.RegisterParser(model.DocumentTypeSwagger, NewSwaggerParser())
 	service.RegisterParser(model.DocumentTypeOpenAPI, NewOpenAPIParser())
 	service.RegisterParser(model.DocumentTypeJavaDoc, NewJavaDocParser())
 
+	// 从环境变量获取 gRPC 服务器地址
+	grpcHost := os.Getenv("GRPC_SERVER_HOST")
+	grpcPort := os.Getenv("GRPC_SERVER_PORT")
+
+	if grpcHost == "" {
+		grpcHost = "localhost"
+	}
+	if grpcPort == "" {
+		grpcPort = "50051"
+	}
+
+	grpcAddr := grpcHost + ":" + grpcPort
+
 	// 连接到gRPC服务
-	if err := service.grpcClient.Connect("localhost:50051"); err != nil {
-		fmt.Printf("警告：连接gRPC服务失败，将使用本地解析器: %v\n", err)
+	if err := service.grpcClient.Connect(grpcAddr); err != nil {
+		fmt.Printf("警告：连接gRPC服务失败(%s)，将使用本地解析器: %v\n", grpcAddr, err)
 		// 如果连接失败，回退到本地解析器
 		service.RegisterParser(model.DocumentTypePDF, NewPDFParser())
 		service.RegisterParser(model.DocumentTypeDocx, NewDocxParser())
+	} else {
+		// 连接成功，使用gRPC解析器
+		service.RegisterParser(model.DocumentTypePDF, NewPDFGRPCParser(service.grpcClient))
+		service.RegisterParser(model.DocumentTypeDocx, NewDocxGRPCParser(service.grpcClient))
 	}
 
 	return service

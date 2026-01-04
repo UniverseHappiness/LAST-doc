@@ -48,6 +48,8 @@ services:
       - ENABLE_HEALTH_CHECK=true
       - TZ=Asia/Shanghai
       - RUN_MIGRATIONS=true
+      - GRPC_SERVER_HOST=python-parser
+      - GRPC_SERVER_PORT=50051
     volumes:
       - ./storage:/app/storage
       - ./backups:/app/backups
@@ -90,6 +92,8 @@ services:
       - JWT_SECRET=your-secret-key-change-in-production
       - ENABLE_HEALTH_CHECK=true
       - TZ=Asia/Shanghai
+      - GRPC_SERVER_HOST=python-parser
+      - GRPC_SERVER_PORT=50051
     volumes:
       - ./storage:/app/storage
       - ./backups:/app/backups
@@ -109,6 +113,28 @@ services:
     labels:
       - "com.ai-doc.service=backend"
       - "com.ai-doc.tier=application"
+
+  # Python解析服务
+  python-parser:
+    build:
+      context: ./python-parser-service
+      dockerfile: Dockerfile
+    container_name: ai-doc-python-parser
+    ports:
+      - "50051:50051"
+    volumes:
+      - ./storage:/app/storage
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "python", "-c", "import socket; s=socket.socket(); s.connect(('localhost', 50051)); s.close()"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+    networks:
+      - ai-doc-network
+    labels:
+      - "com.ai-doc.service=python-parser"
 
   # MinIO分布式存储服务（可选，用于存储扩展）
   minio:
