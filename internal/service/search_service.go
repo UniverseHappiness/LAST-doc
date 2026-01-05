@@ -181,9 +181,9 @@ func (s *searchService) Search(ctx context.Context, request *model.SearchRequest
 	duration := time.Since(startTime)
 	log.Printf("Search completed in %v for query: %s", duration, request.Query)
 
-	// 转换为搜索结果
+	// 转换为搜索结果，传递查询词以便在片段中显示上下文
 	log.Printf("DEBUG: Found %d indices, total count: %d", len(indices), total)
-	results := s.convertToSearchResults(indices)
+	results := s.convertToSearchResultsWithQuery(indices, request.Query)
 	log.Printf("DEBUG: Converted to %d search results", len(results))
 
 	response := &model.SearchResponse{
@@ -223,6 +223,7 @@ func (s *searchService) ClearCache() error {
 func (s *searchService) parseAndBuildIndices(document *model.Document, docVersion *model.DocumentVersion) ([]*model.SearchIndex, error) {
 	// 直接使用整个文档内容，不再分段处理
 	content := docVersion.Content
+	contentLength := len(content)
 
 	// 生成向量
 	vectorSlice := s.generateContentVector(content)
@@ -235,20 +236,26 @@ func (s *searchService) parseAndBuildIndices(document *model.Document, docVersio
 		vectorJSON = []byte("[]")
 	}
 
+	// 计算位置信息：从文档开始到结束
+	startPos := 0
+	endPos := contentLength
+
 	// 创建单个索引条目
 	newID := generateID()
 	index := &model.SearchIndex{
-		ID:          newID,
-		DocumentID:  document.ID,
-		Version:     docVersion.Version,
-		Content:     content,
-		ContentType: "text",
-		Section:     document.Name,
-		Keywords:    "",                 // 不使用关键词
-		Vector:      string(vectorJSON), // 传统向量，以JSON字符串格式存储
-		Metadata:    s.buildSimpleMetadata(document, docVersion),
-		CreatedAt:   time.Now(),
-		UpdatedAt:   time.Now(),
+		ID:            newID,
+		DocumentID:    document.ID,
+		Version:       docVersion.Version,
+		Content:       content,
+		ContentType:   "text",
+		Section:       document.Name,
+		Keywords:      "",                 // 不使用关键词
+		Vector:        string(vectorJSON), // 传统向量，以JSON字符串格式存储
+		Metadata:      s.buildMetadataWithPosition(document, docVersion, startPos, endPos),
+		StartPosition: startPos, // 记录起始位置
+		EndPosition:   endPos,   // 记录结束位置
+		CreatedAt:     time.Now(),
+		UpdatedAt:     time.Now(),
 	}
 
 	// 只有在 pgvector 扩展可用且生成了有效嵌入向量时才设置 Embedding 字段
@@ -264,14 +271,14 @@ func (s *searchService) parseAndBuildIndices(document *model.Document, docVersio
 	}
 
 	// 创建新索引
-	log.Printf("DEBUG: 创建索引 - 文档ID: %s, 版本: %s", document.ID, docVersion.Version)
+	log.Printf("DEBUG: 创建索引 - 文档ID: %s, 版本: %s, 位置: %d-%d", document.ID, docVersion.Version, startPos, endPos)
 	if err := s.indexRepo.Create(context.Background(), index); err != nil {
 		log.Printf("DEBUG: 创建索引失败 - 文档ID: %s, 版本: %s, 错误: %v", document.ID, docVersion.Version, err)
 		return nil, fmt.Errorf("failed to create index: %v", err)
 	}
-	log.Printf("DEBUG: 创建索引成功 - 文档ID: %s, 版本: %s", document.ID, docVersion.Version)
+	log.Printf("DEBUG: 创建索引成功 - 文档ID: %s, 版本: %s, 位置: %d-%d", document.ID, docVersion.Version, startPos, endPos)
 
-	log.Printf("Successfully built index for document %s version %s", document.ID, docVersion.Version)
+	log.Printf("Successfully built index for document %s version %s with position %d-%d", document.ID, docVersion.Version, startPos, endPos)
 
 	return indices, nil
 }
@@ -504,11 +511,28 @@ func (s *searchService) calculateRelevanceScore(index *model.SearchIndex, query 
 
 // convertToSearchResults 转换为搜索结果
 func (s *searchService) convertToSearchResults(indices []*model.SearchIndex) []model.SearchResult {
+	return s.convertToSearchResultsWithQuery(indices, "")
+}
+
+// convertToSearchResultsWithQuery 转换为搜索结果（带查询词）
+func (s *searchService) convertToSearchResultsWithQuery(indices []*model.SearchIndex, query string) []model.SearchResult {
 	var results []model.SearchResult
 
 	for _, idx := range indices {
-		// 生成内容片段
-		snippet := s.generateSnippet(idx.Content, 200)
+		// 计算片段在原始文档中的位置
+		startPos := 0
+		endPos := len(idx.Content)
+
+		// 如果搜索索引中存储了位置信息，使用它
+		if idx.StartPosition > 0 {
+			startPos = idx.StartPosition
+		}
+		if idx.EndPosition > 0 && idx.EndPosition <= len(idx.Content) {
+			endPos = idx.EndPosition
+		}
+
+		// 生成内容片段，优先显示包含查询词的上下文
+		snippet := s.generateSnippetWithQuery(idx.Content, query, 300)
 
 		// 解析元数据
 		var metadata map[string]interface{}
@@ -525,6 +549,12 @@ func (s *searchService) convertToSearchResults(indices []*model.SearchIndex) []m
 			}
 		} else {
 			metadata = make(map[string]interface{})
+		}
+
+		// 在元数据中包含位置信息
+		if startPos > 0 || endPos > 0 {
+			metadata["start_position"] = startPos
+			metadata["end_position"] = endPos
 		}
 
 		result := model.SearchResult{
@@ -548,6 +578,194 @@ func (s *searchService) convertToSearchResults(indices []*model.SearchIndex) []m
 
 // generateSnippet 生成内容片段
 func (s *searchService) generateSnippet(content string, maxLength int) string {
+	return s.generateSnippetWithQuery(content, "", maxLength)
+}
+
+// generateSnippetWithQuery 生成包含查询词的内容片段
+func (s *searchService) generateSnippetWithQuery(content, query string, maxLength int) string {
+	if len(content) <= maxLength {
+		return content
+	}
+
+	// 如果没有查询词，返回开头部分
+	if query == "" {
+		return s.truncateToSmartLength(content, maxLength)
+	}
+
+	// 在内容中查找查询词
+	lowerContent := strings.ToLower(content)
+	lowerQuery := strings.ToLower(query)
+
+	// 尝试找到查询词的位置
+	idx := strings.Index(lowerContent, lowerQuery)
+	if idx == -1 {
+		// 找不到查询词，返回开头部分
+		return s.truncateToSmartLength(content, maxLength)
+	}
+
+	// 智能计算片段起始位置，确保包含完整的markdown代码块
+	start := s.findOptimalStartPosition(content, idx, maxLength)
+
+	// 计算结束位置
+	end := start + maxLength
+	if end > len(content) {
+		end = len(content)
+		start = end - maxLength
+		if start < 0 {
+			start = 0
+		}
+	}
+
+	snippet := content[start:end]
+
+	// 添加省略号标记截断
+	if start > 0 {
+		snippet = "..." + snippet
+	}
+	if end < len(content) {
+		snippet = snippet + "..."
+	}
+
+	return snippet
+}
+
+// findOptimalStartPosition 查找最优的片段起始位置
+// 确保包含完整的markdown代码块（避免在代码块中间截断）
+func (s *searchService) findOptimalStartPosition(content string, matchIndex, maxLength int) int {
+	// 默认从匹配位置开始，向前50%
+	halfLength := maxLength / 2
+	start := matchIndex - halfLength
+
+	// 检查向前是否包含未闭合的markdown代码块
+	if start > 0 {
+		// 向前查找最近的换行符，确保不在代码块中间截断
+		safeStart := s.findSafeBreakPoint(content, start, -1, 20)
+		if safeStart != -1 {
+			start = safeStart
+		}
+	}
+
+	// 确保不超出内容长度
+	if start < 0 {
+		start = 0
+	}
+
+	// 检查后边界，如果包含未闭合的代码块，向后扩展
+	if s.hasUnclosedCodeBlock(content, start+maxLength) {
+		// 尝试向后扩展以包含完整的代码块
+		extendedEnd := s.findCompleteCodeBlockEnd(content, start+maxLength)
+		if extendedEnd != -1 && (extendedEnd-start) <= maxLength*2 {
+			// 可以向后扩展，但不超出maxLength的2倍
+			return start
+		}
+	}
+
+	return start
+}
+
+// findSafeBreakPoint 在指定范围内查找安全的断点（换行符）
+func (s *searchService) findSafeBreakPoint(content string, start int, direction, maxLookback int) int {
+	contentLen := len(content)
+
+	if direction < 0 {
+		// 向前查找
+		begin := start + direction
+		end := start
+		for i := begin; i >= 0 && i >= end-maxLookback; i-- {
+			if content[i] == '\n' {
+				return i + 1 // 返回换行符后面的位置
+			}
+		}
+	} else {
+		// 向后查找（不使用，因为要向后扩展）
+		for i := start; i < contentLen && i < start+direction+maxLookback; i++ {
+			if content[i] == '\n' {
+				return i + 1 // 返回换行符后面的位置
+			}
+		}
+	}
+
+	return -1
+}
+
+// hasUnclosedCodeBlock 检查指定位置后是否有未闭合的代码块
+func (s *searchService) hasUnclosedCodeBlock(content string, endPos int) bool {
+	slice := content[:endPos]
+
+	// 检查是否包含未闭合的代码块标记
+	// 代码块开始：```, ```bash, ```python, ```json, ```javascript, ```code, ```text,
+	// 代码块开始：~~~python, ~~~bash, ~~~shell,
+	codeStartPatterns := []string{
+		"```python", "```bash", "```shell", "```json",
+		"```javascript", "```js", "```code", "```text",
+		"~~~python", "~~~bash", "~~~shell",
+	}
+
+	// 检查每个代码块开始标记
+	for i := len(slice) - 1; i >= 0; i-- {
+		// 查找最近的代码块开始
+		hasStart := false
+		hasEnd := false
+
+		for _, pattern := range codeStartPatterns {
+			if strings.HasPrefix(slice[i:], pattern) || strings.Contains(slice[i:], pattern) {
+				hasStart = true
+				// 查找对应的结束标记
+				endPattern := strings.TrimPrefix(pattern, "```")
+				if idx := strings.Index(slice[i:], endPattern+"```"); idx != -1 {
+					hasEnd = true
+					break
+				}
+			}
+		}
+
+		// 如果有开始但没有结束，说明有未闭合的代码块
+		if hasStart && !hasEnd {
+			return true
+		}
+	}
+
+	return false
+}
+
+// findCompleteCodeBlockEnd 查找最近的代码块结束标记
+func (s *searchService) findCompleteCodeBlockEnd(content string, start int) int {
+	slice := content[start:]
+
+	// 代码块结束模式
+	endPatterns := []string{"```", "~~~"}
+
+	minEndPos := -1
+
+	for i := 0; i < len(slice); i++ {
+		// 跳过前几个字符，避免匹配代码块开始后的结束标记
+		if i > 10 {
+			break
+		}
+
+		// 查找代码块结束
+		for _, pattern := range endPatterns {
+			if strings.HasPrefix(slice[i:], pattern) && i > 5 {
+				// 确保不是代码块开始后的结束标记
+				if !strings.HasPrefix(slice[i:], "```") ||
+					(i > 10 && strings.Count(slice[:i+10], "```") > 0) {
+					if minEndPos == -1 || i < minEndPos {
+						minEndPos = i
+					}
+				}
+			}
+		}
+	}
+
+	if minEndPos != -1 {
+		return start + minEndPos + 3 // +3 是为了包含 ``` 或 ~~~ 结束标记
+	}
+
+	return -1
+}
+
+// truncateToSmartLength 智能截断到合适长度
+func (s *searchService) truncateToSmartLength(content string, maxLength int) string {
 	if len(content) <= maxLength {
 		return content
 	}
@@ -644,6 +862,27 @@ func (s *searchService) buildSimpleMetadata(document *model.Document, docVersion
 		"document_type":    document.Type,
 		"document_library": document.Library,
 		"version":          docVersion.Version,
+	}
+
+	// 使用json.Marshal进行正确的JSON序列化
+	metadataJSON, err := json.Marshal(metadata)
+	if err != nil {
+		log.Printf("Error marshaling metadata to JSON: %v", err)
+		return "{}"
+	}
+	return string(metadataJSON)
+}
+
+// buildMetadataWithPosition 构建包含位置信息的元数据
+func (s *searchService) buildMetadataWithPosition(document *model.Document, docVersion *model.DocumentVersion, startPos, endPos int) string {
+	metadata := map[string]interface{}{
+		"document_name":    document.Name,
+		"document_type":    document.Type,
+		"document_library": document.Library,
+		"version":          docVersion.Version,
+		"start_position":   float64(startPos), // JSON中数字默认为float64
+		"end_position":     float64(endPos),
+		"content_length":   float64(endPos - startPos),
 	}
 
 	// 使用json.Marshal进行正确的JSON序列化

@@ -35,19 +35,21 @@ func (v *Vector) Scan(value interface{}) error {
 
 // SearchIndex 定义搜索索引模型
 type SearchIndex struct {
-	ID          string    `json:"id" gorm:"primaryKey"`
-	DocumentID  string    `json:"document_id" gorm:"not null;index"`
-	Version     string    `json:"version" gorm:"not null;index"`
-	Content     string    `json:"content" gorm:"type:text;not null"`
-	ContentType string    `json:"content_type" gorm:"not null;index"` // text, code, etc.
-	Section     string    `json:"section" gorm:"index"`               // 文档章节
-	Keywords    string    `json:"keywords" gorm:"type:text"`          // 关键词
-	Vector      string    `json:"vector" gorm:"type:jsonb"`           // 语义向量，以JSON字符串格式存储
-	Embedding   []float32 `json:"embedding" gorm:"-"`                 // 真实嵌入向量，使用pgvector扩展（暂时禁用GORM自动迁移）
-	Metadata    string    `json:"metadata" gorm:"type:jsonb"`         // 额外元数据
-	Score       float32   `json:"score"`                              // 搜索相关度得分
-	CreatedAt   time.Time `json:"created_at" gorm:"autoCreateTime"`
-	UpdatedAt   time.Time `json:"updated_at" gorm:"autoUpdateTime"`
+	ID            string    `json:"id" gorm:"primaryKey"`
+	DocumentID    string    `json:"document_id" gorm:"not null;index"`
+	Version       string    `json:"version" gorm:"not null;index"`
+	Content       string    `json:"content" gorm:"type:text;not null"`
+	ContentType   string    `json:"content_type" gorm:"not null;index"` // text, code, etc.
+	Section       string    `json:"section" gorm:"index"`               // 文档章节
+	Keywords      string    `json:"keywords" gorm:"type:text"`          // 关键词
+	Vector        string    `json:"vector" gorm:"type:jsonb"`           // 语义向量，以JSON字符串格式存储
+	Embedding     []float32 `json:"embedding" gorm:"-"`                 // 真实嵌入向量，使用pgvector扩展（暂时禁用GORM自动迁移）
+	Metadata      string    `json:"metadata" gorm:"type:jsonb"`         // 额外元数据
+	Score         float32   `json:"score"`                              // 搜索相关度得分
+	StartPosition int       `json:"start_position"`                     // 片段在原文档中的起始位置（字符数）
+	EndPosition   int       `json:"end_position"`                       // 片段在原文档中的结束位置（字符数）
+	CreatedAt     time.Time `json:"created_at" gorm:"autoCreateTime"`
+	UpdatedAt     time.Time `json:"updated_at" gorm:"autoUpdateTime"`
 }
 
 // SearchRequest 定义搜索请求模型

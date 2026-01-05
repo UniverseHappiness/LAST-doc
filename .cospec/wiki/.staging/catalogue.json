@@ -1,0 +1,654 @@
+[
+  {
+    "title": "1、项目概述",
+    "prompt": "全面介绍AI技术文档库（LAST-doc）项目的核心价值、技术栈组成、目标用户群体和系统特性",
+    "sections": [
+      {
+        "title": "overview-introduction",
+        "name": "项目简介",
+        "prompt": "详细说明项目的核心功能、解决的问题和应用场景，基于项目代码库分析实际提供的文档管理、智能检索、版本控制等核心能力"
+      },
+      {
+        "title": "overview-techstack",
+        "name": "技术栈总览",
+        "prompt": "深入分析项目使用的技术栈，包括Go 1.24、Gin框架、Vue.js 3、PostgreSQL 15、Docker、gRPC、Python 3.8+、Nginx、Kubernetes等技术选型的理由和优势",
+        "sections": [
+          {
+            "title": "techstack-backend",
+            "name": "后端技术栈",
+            "prompt": "详细分析Go后端的技术架构，包括Gin框架、GORM ORM、gRPC通信等技术的使用场景和实现方式"
+          },
+          {
+            "title": "techstack-frontend",
+            "name": "前端技术栈",
+            "prompt": "深入解析Vue.js 3前端应用的技术选型，包括组件库、状态管理、路由等核心技术的实现"
+          }
+        ]
+      },
+      {
+        "title": "overview-architecture",
+        "name": "系统架构概览",
+        "prompt": "基于cmd/main.go、internal目录结构分析，详细说明系统的微服务架构设计，包括Go后端、Vue前端、Python解析服务三个核心组件的交互关系和职责划分"
+      },
+      {
+        "title": "overview-features",
+        "name": "核心功能特性",
+        "prompt": "全面梳理系统提供的核心功能，包括文档上传解析、版本控制、元数据管理、智能检索、用户认证授权、MCP协议支持、系统监控、备份恢复等功能的业务价值和技术实现亮点"
+      }
+    ]
+  },
+  {
+    "title": "2、环境配置与部署",
+    "prompt": "详细指导用户完成开发环境配置、生产环境部署和运维配置，涵盖Docker Compose和Kubernetes两种部署方式",
+    "sections": [
+      {
+        "title": "installation-requirements",
+        "name": "系统要求",
+        "prompt": "明确列出开发和生产环境的硬件、软件要求，包括Go 1.24、Node.js、Python 3.8+、Docker、PostgreSQL 15等依赖的版本要求"
+      },
+      {
+        "title": "installation-development",
+        "name": "开发环境搭建",
+        "prompt": "分步骤指导开发者搭建开发环境，包括Go后端、Vue.js前端、Python解析服务的本地配置，基于docker-compose.yml提供完整的本地开发环境启动方案"
+      },
+      {
+        "title": "installation-docker",
+        "name": "Docker Compose部署",
+        "prompt": "详细说明使用docker-compose.yml进行容器化部署的完整流程，包括环境变量配置、数据卷挂载、网络配置等，确保所有服务（PostgreSQL、Redis、MinIO、后端、前端、解析服务）能够正常启动和通信"
+      },
+      {
+        "title": "installation-kubernetes",
+        "name": "Kubernetes部署",
+        "prompt": "深入分析k8s目录下的配置文件，包括deployment.yaml、service.yaml、configmap.yaml、ingress.yaml等，详细说明如何在Kubernetes集群中部署LAST-doc系统，包括命名空间创建、资源配额、持久化存储配置、健康检查、自动扩缩容等高级配置"
+      },
+      {
+        "title": "installation-configuration",
+        "name": "配置说明",
+        "prompt": "详细说明系统的关键配置项，包括数据库连接、Redis配置、MinIO存储配置、OpenAI API Key、JWT密钥、监控配置等环境变量的设置方法和安全最佳实践"
+      }
+    ]
+  },
+  {
+    "title": "3、核心概念",
+    "prompt": "深入解析系统的核心概念、抽象模型和设计理念，帮助用户理解系统的技术架构和业务逻辑",
+    "sections": [
+      {
+        "title": "concepts-microservice",
+        "name": "微服务架构概念",
+        "prompt": "详细解释系统采用的微服务架构设计理念，分析Go后端、Vue前端、Python解析服务的服务拆分原则、通信方式（REST API、gRPC）、服务发现和负载均衡机制"
+      },
+      {
+        "title": "concepts-layered-architecture",
+        "name": "分层架构设计",
+        "prompt": "深入分析internal目录下的Handler、Service、Repository三层架构设计，说明每层的职责划分、数据流转方式以及遵循的SOLID原则和设计模式"
+      },
+      {
+        "title": "concepts-document-model",
+        "name": "文档数据模型",
+        "prompt": "基于internal/model/document.go详细说明文档的数据结构，包括文档元数据、版本信息、搜索索引、文档内容存储等核心概念和数据关系"
+      },
+      {
+        "title": "concepts-vector-search",
+        "name": "向量搜索原理",
+        "prompt": "深入解析pgvector向量搜索和OpenAI Embedding的技术原理，说明文档向量化存储、相似度计算、混合检索（关键词+语义搜索）的实现机制"
+      },
+      {
+        "title": "concepts-mcp-protocol",
+        "name": "MCP协议",
+        "prompt": "详细说明MCP（Model Context Protocol）协议的基本概念、设计目标，以及在AI技术文档库中的应用场景和实现方式"
+      }
+    ]
+  },
+  {
+    "title": "4、基础使用指南",
+    "prompt": "提供系统的基础操作指南和常见使用场景，帮助用户快速上手使用AI技术文档库",
+    "sections": [
+      {
+        "title": "usage-user-management",
+        "name": "用户管理",
+        "prompt": "详细说明用户注册、登录、密码重置、个人信息管理等功能的使用方法，包括基于JWT的认证流程和权限管理机制"
+      },
+      {
+        "title": "usage-document-upload",
+        "name": "文档上传管理",
+        "prompt": "指导用户如何上传各种格式的文档（PDF、DOCX等），说明文档解析流程、元数据填写、标签管理、分类设置等操作步骤"
+      },
+      {
+        "title": "usage-document-edit",
+        "name": "文档编辑与管理",
+        "prompt": "详细说明文档内容编辑、元数据修改、版本创建、文档删除等操作，包括版本回滚和版本对比功能的使用方法"
+      },
+      {
+        "title": "usage-document-search",
+        "name": "文档检索",
+        "prompt": "深入说明智能检索功能的使用方法，包括关键词搜索、语义搜索、混合检索、高级筛选（按标签、分类、时间等）的搜索技巧和最佳实践"
+      },
+      {
+        "title": "usage-api-usage",
+        "name": "API使用指南",
+        "prompt": "提供RESTful API的详细使用说明，包括API密钥管理、认证方式、请求格式、响应格式、错误码说明，以及常用的API调用示例"
+      }
+    ]
+  },
+  {
+    "title": "5、架构设计深度分析",
+    "prompt": "深入分析系统架构设计原理、架构模式、组件交互关系和技术决策依据",
+    "sections": [
+      {
+        "title": "architecture-overview",
+        "name": "架构总览",
+        "prompt": "基于cmd/main.go和internal目录结构，全面分析系统的总体架构设计，包括微服务拆分原则、服务职责划分、组件依赖关系、数据流向等"
+      },
+      {
+        "title": "architecture-microservices",
+        "name": "微服务架构设计",
+        "prompt": "深入分析微服务架构的设计决策，包括服务边界的确定、服务间通信方式（REST/gRPC）的选择、数据一致性策略、服务治理机制等"
+      },
+      {
+        "title": "architecture-layered-design",
+        "name": "分层架构实现",
+        "prompt": "详细解析Handler-Service-Repository三层架构的设计原理和实现方式，说明职责分离、依赖注入、接口抽象等设计模式的应用"
+      },
+      {
+        "title": "architecture-component-interaction",
+        "name": "组件交互关系",
+        "prompt": "深入分析系统各核心组件（文档管理、解析服务、检索服务、认证授权、存储服务等）之间的交互方式、数据流转和协作机制"
+      },
+      {
+        "title": "architecture-design-patterns",
+        "name": "设计模式应用",
+        "prompt": "系统梳理代码中使用的设计模式，包括工厂模式、策略模式、单例模式、观察者模式等，分析每种模式的应用场景和实现方式"
+      }
+    ]
+  },
+  {
+    "title": "6、核心组件深度解析",
+    "prompt": "详细分析系统核心组件的设计原理、技术实现和最佳实践",
+    "sections": [
+      {
+        "title": "component-document-management",
+        "name": "文档管理组件",
+        "prompt": "基于internal/handler/document_handler.go、internal/service/document_service.go、internal/repository/document_repository.go，深入分析文档管理组件的架构设计、业务逻辑实现、数据模型设计和关键功能（上传、编辑、删除、查询）的技术实现"
+      },
+      {
+        "title": "component-parser-service",
+        "name": "文档解析服务",
+        "prompt": "详细分析python-parser-service目录下的文档解析服务架构，包括gRPC服务设计、PDF/DOCX解析实现（基于python-parser-service/service/docx_parser.py、pdf_parser.py）、错误处理和性能优化策略"
+      },
+      {
+        "title": "component-search-service",
+        "name": "智能检索服务",
+        "prompt": "基于internal/service/search_service.go、internal/service/embedding_service.go，深入分析智能检索服务的技术实现，包括关键词搜索、语义搜索、混合检索算法、向量相似度计算、结果排序和筛选机制"
+      },
+      {
+        "title": "component-auth-service",
+        "name": "认证授权服务",
+        "prompt": "详细分析internal/middleware/auth.go、internal/service/user_service.go的实现，包括JWT认证机制、密码加密、会话管理、权限控制、API密钥管理（基于internal/model/user.go）等技术实现"
+      },
+      {
+        "title": "component-storage-service",
+        "name": "存储服务",
+        "prompt": "深入分析internal/service/storage_service.go、internal/service/s3_storage_service.go的存储架构设计，包括本地文件系统Storage、MinIO对象存储、存储工厂模式（storage_factory.go）、文件上传下载、存储策略等技术实现"
+      },
+      {
+        "title": "component-version-control",
+        "name": "版本控制组件",
+        "prompt": "基于internal/repository/document_version_repository.go详细分析版本控制机制，包括版本号生成、版本存储、版本回滚、版本对比、版本查询等功能的技术实现"
+      },
+      {
+        "title": "component-monitor-service",
+        "name": "监控服务",
+        "prompt": "分析internal/service/monitor_service.go、internal/handler/metrics_handler.go的实现，包括系统指标收集、性能监控、日志记录、告警机制、Prometheus集成等监控功能的技术实现"
+      },
+      {
+        "title": "component-backup-service",
+        "name": "备份恢复服务",
+        "prompt": "深入分析internal/service/backup_service.go、internal/service/postgres_backup.go的备份恢复架构，包括数据库备份策略、备份存储、增量备份、恢复流程、数据一致性保证等技术实现"
+      }
+    ]
+  },
+  {
+    "title": "7、功能实现详解",
+    "prompt": "详细分析业务逻辑实现和功能模块分解，深入解释每个功能的技术实现细节",
+    "sections": [
+      {
+        "title": "feature-document-upload",
+        "name": "文档上传功能",
+        "prompt": "从HTTP请求处理到文件存储的完整流程分析，包括文件接收、参数验证、文件解析、元数据提取、存储分配、版本创建、搜索索引构建等技术实现细节"
+      },
+      {
+        "title": "feature-document-parsing",
+        "name": "文档解析功能",
+        "prompt": "详细分析文档解析流程，包括格式识别、解析器选择（PDF/DOCX）、内容提取、文本清理、结构化信息提取、解析错误处理等技术实现，基于python-parser-service的代码分析"
+      },
+      {
+        "title": "feature-semantic-search",
+        "name": "语义检索功能",
+        "prompt": "深入分析语义检索的技术实现，包括文档向量化（OpenAI Embedding API）、向量存储（pgvector）、相似度计算、混合检索策略（关键词+语义）、结果排序等技术实现细节"
+      },
+      {
+        "title": "feature-user-authentication",
+        "name": "用户认证功能",
+        "prompt": "详细分析用户认证流程，包括用户注册、密码加密、登录验证、JWT生成和验证、会话管理、密码重置、双因素认证等技术实现，基于internal/middleware/auth.go和internal/model/user.go"
+      },
+      {
+        "title": "feature-api-key-management",
+        "name": "API密钥管理功能",
+        "prompt": "深入分析API密钥的生成、存储、验证、失效机制，包括密钥加密、权限绑定、使用限制、密钥轮换等技术实现细节"
+      },
+      {
+        "title": "feature-document-versioning",
+        "name": "文档版本管理功能",
+        "prompt": "详细分析文档版本控制的实现，包括版本存储策略、版本号生成规则、版本对比算法、版本回滚机制、版本清理等技术实现"
+      },
+      {
+        "title": "feature-tagging-system",
+        "name": "标签系统功能",
+        "prompt": "分析标签系统的实现，包括标签创建、标签分配、标签查询、标签统计、标签关联等技术实现"
+      },
+      {
+        "title": "feature-category-management",
+        "name": "分类管理功能",
+        "prompt": "详细分析文档分类管理的技术实现，包括分类树结构、分类继承、分类查询、分类统计等功能"
+      },
+      {
+        "title": "feature-backup-restore",
+        "name": "备份恢复功能",
+        "prompt": "深入分析备份和恢复的完整流程，包括备份触发机制、备份压缩、加密存储、恢复验证、数据一致性检查等技术实现"
+      }
+    ]
+  },
+  {
+    "title": "8、技术实现深度剖析",
+    "prompt": "深入分析算法设计、数据结构、性能优化策略等技术实现细节",
+    "sections": [
+      {
+        "title": "implementation-vector-algorithms",
+        "name": "向量算法实现",
+        "prompt": "详细分析向量嵌入、相似度计算（余弦相似度、欧氏距离）、向量索引、向量检索优化等算法的技术实现和性能优化策略"
+      },
+      {
+        "title": "implementation-search-optimization",
+        "name": "检索优化技术",
+        "prompt": "深入分析检索性能优化技术，包括索引优化、缓存策略（internal/service/cache_service.go）、查询优化、结果分页、延迟加载等技术实现"
+      },
+      {
+        "title": "implementation-concurrency",
+        "name": "并发处理机制",
+        "prompt": "分析系统中的并发处理机制，包括goroutine使用、通道通信、并发安全、锁机制、并发控制等技术实现"
+      },
+      {
+        "title": "implementation-cache-strategy",
+        "name": "缓存策略",
+        "prompt": "详细分析internal/service/cache_service.go的缓存实现，包括缓存类型（Redis）、缓存策略（LRU、TTL）、缓存更新、缓存穿透、缓存雪崩等问题的解决方案"
+      },
+      {
+        "title": "implementation-circuit-breaker",
+        "name": "熔断器机制",
+        "prompt": "深入分析internal/service/circuit_breaker.go的熔断器实现，包括熔断状态转换、降级策略、恢复机制、监控指标等技术细节"
+      },
+      {
+        "title": "implementation-error-handling",
+        "name": "错误处理机制",
+        "prompt": "系统分析错误处理策略，包括错误类型定义、错误传播、日志记录、错误恢复、用户友好的错误提示等实现细节"
+      }
+    ]
+  },
+  {
+    "title": "9、集成与扩展",
+    "prompt": "详细分析外部接口、系统集成、扩展机制和开放性设计",
+    "sections": [
+      {
+        "title": "integration-rest-api",
+        "name": "RESTful API接口",
+        "prompt": "深入分析internal/router/router.go的路由设计，包括API端点定义、请求方法、参数验证、响应格式、错误处理、API版本控制等接口设计规范"
+      },
+      {
+        "title": "integration-grpc",
+        "name": "gRPC服务集成",
+        "prompt": "详细分析proto/document_parser.proto的gRPC接口定义，包括服务定义、消息结构、流式通信、gRPC服务器和客户端的实现细节"
+      },
+      {
+        "title": "integration-openai",
+        "name": "OpenAI API集成",
+        "prompt": "深入分析OpenAI Embedding API的集成方式，包括API调用、错误处理、重试机制、速率限制、成本控制等技术实现"
+      },
+      {
+        "title": "integration-postgresql",
+        "name": "PostgreSQL集成",
+        "prompt": "详细分析PostgreSQL数据库集成，包括数据库连接池管理、GORM使用、事务处理、索引优化、pgvector扩展配置等技术细节"
+      },
+      {
+        "title": "integration-minio",
+        "name": "MinIO对象存储集成",
+        "prompt": "深入分析MinIO存储服务的集成，包括S3兼容接口使用、分片上传、存储桶管理、访问控制、签名验证等技术实现"
+      },
+      {
+        "title": "integration-monitoring",
+        "name": "监控系统集成",
+        "prompt": "详细分析Prometheus监控系统集成，包括metrics暴露（internal/handler/metrics_handler.go）、监控指标定义、告警规则配置、Grafana可视化等技术实现"
+      },
+      {
+        "title": "extension-plugin",
+        "name": "插件扩展机制",
+        "prompt": "分析系统的扩展性设计，包括解析器扩展、存储插件、认证插件、检索算法插件等扩展接口和实现机制"
+      }
+    ]
+  },
+  {
+    "title": "10、前端应用架构",
+    "prompt": "深入解析Vue.js 3前端应用的架构设计、组件体系和技术实现",
+    "sections": [
+      {
+        "title": "frontend-architecture",
+        "name": "前端架构总览",
+        "prompt": "基于web/src目录结构，全面分析Vue.js 3前端应用的架构设计，包括组件化设计、路由设计、状态管理、API调用等技术架构"
+      },
+      {
+        "title": "frontend-components",
+        "name": "核心组件",
+        "prompt": "详细分析web/src/views目录下各视图组件的设计和实现，包括DocumentListView、DocumentView、SearchView、UploadView等组件的功能、接口和交互逻辑"
+      },
+      {
+        "title": "frontend-auth",
+        "name": "认证集成",
+        "prompt": "深入分析web/src/utils/authService.js和web/src/composables/useAuth.js的认证实现，包括JWT存储、认证状态管理、自动刷新、权限控制等技术实现"
+      },
+      {
+        "title": "frontend-api",
+        "name": "API服务封装",
+        "prompt": "详细分析web/src/utils/目录下的服务封装，包括authService.js、documentService.js、searchService.js、monitorService.js等API调用模块的设计和实现"
+      },
+      {
+        "title": "frontend-layout",
+        "name": "布局与导航",
+        "prompt": "分析前端应用的布局设计和导航结构，包括主布局、侧边栏导航、面包屑、权限控制菜单等技术实现"
+      }
+    ]
+  },
+  {
+    "title": "11、API网关与负载均衡",
+    "prompt": "深入分析Nginx反向代理和API网关的配置与实现",
+    "sections": [
+      {
+        "title": "gateway-nginx-config",
+        "name": "Nginx配置",
+        "prompt": "详细分析nginx.conf的配置，包括反向代理配置、负载均衡策略、SSL/TLS配置、静态资源服务、请求重写、缓存配置等技术细节"
+      },
+      {
+        "title": "gateway-routing",
+        "name": "路由策略",
+        "prompt": "深入分析API网关的路由策略，包括服务路由、路径匹配、请求转发、健康检查、故障转移等机制"
+      },
+      {
+        "title": "gateway-security",
+        "name": "安全配置",
+        "prompt": "详细分析API网关的安全配置，包括请求限流、IP白名单、请求头过滤、防DDoS攻击、安全响应头等安全措施"
+      },
+      {
+        "title": "gateway-optimization",
+        "name": "性能优化",
+        "prompt": "分析API网关的性能优化策略，包括连接池配置、压缩传输、缓存策略、Keep-Alive优化等技术实现"
+      }
+    ]
+  },
+  {
+    "title": "12、数据库设计详解",
+    "prompt": "深入分析PostgreSQL数据库设计和数据模型",
+    "sections": [
+      {
+        "title": "database-schema",
+        "name": "数据库表结构",
+        "prompt": "基于internal/model/目录下的数据模型，详细分析数据库表结构设计，包括users表、documents表、document_versions表、search_indices表、mcp_api_keys表等的字段定义、索引设计、关系约束"
+      },
+      {
+        "title": "database-vector-extension",
+        "name": "向量扩展",
+        "prompt": "深入分析pgvector扩展的配置和使用，包括vector数据类型、相似度函数、索引策略、性能优化等技术细节"
+      },
+      {
+        "title": "database-migrations",
+        "name": "数据库迁移",
+        "prompt": "详细分析scripts/目录下的数据库迁移脚本，包括表结构变更、数据迁移、索引优化、版本管理等迁移策略"
+      },
+      {
+        "title": "database-optimization",
+        "name": "数据库优化",
+        "prompt": "分析数据库性能优化策略，包括查询优化、索引优化、连接池配置、慢查询优化、分库分表等技术实现"
+      },
+      {
+        "title": "database-backup",
+        "name": "数据库备份",
+        "prompt": "详细介绍PostgreSQL备份策略，包括全量备份、增量备份、备份压缩、备份加密、备份验证等技术实现"
+      }
+    ]
+  },
+  {
+    "title": "13、部署运维方案",
+    "prompt": "详细分析部署配置和运维管理方案",
+    "sections": [
+      {
+        "title": "deployment-docker",
+        "name": "Docker部署方案",
+        "prompt": "深入分析docker-compose.yml的配置细节，包括服务定义、依赖关系、网络配置、数据卷配置、环境变量配置等容器化部署方案"
+      },
+      {
+        "title": "deployment-kubernetes",
+        "name": "Kubernetes部署方案",
+        "prompt": "详细分析k8s/目录下的Kubernetes部署配置，包括Deployment、Service、ConfigMap、Secret、Ingress、PVC等资源的配置和部署策略"
+      },
+      {
+        "title": "deployment-scalability",
+        "name": "可扩展性部署",
+        "prompt": "分析系统的水平扩展策略，包括后端服务多实例部署、负载均衡配置、数据库读写分离、服务自动扩缩容等技术实现"
+      },
+      {
+        "title": "deployment-monitoring",
+        "name": "监控部署",
+        "prompt": "详细分析Prometheus和Grafana的部署配置，包括指标采集、告警规则、可视化仪表板、日志聚合等监控方案"
+      },
+      {
+        "title": "deployment-scripts",
+        "name": "部署脚本",
+        "prompt": "分析Makefile和scripts/目录下的部署脚本，包括自动化部署、健康检查、服务重启、配置验证等运维脚本的使用方法"
+      }
+    ]
+  },
+  {
+    "title": "14、系统监控与日志",
+    "prompt": "深入分析系统监控、日志记录和可观测性方案",
+    "sections": [
+      {
+        "title": "monitoring-metrics",
+        "name": "监控指标",
+        "prompt": "详细分析系统收集的监控指标，包括系统资源指标（CPU、内存、磁盘、网络）、业务指标（文档数量、用户数量、搜索次数）、性能指标（响应时间、吞吐量、错误率）等"
+      },
+      {
+        "title": "monitoring-prometheus",
+        "name": "Prometheus集成",
+        "prompt": "深入分析Prometheus的集成方式，包括metrics暴露格式、Prometheus配置、数据采集策略、存储配置等技术实现"
+      },
+      {
+        "title": "monitoring-grafana",
+        "name": "Grafana可视化",
+        "prompt": "详细分析Grafana仪表板的设计，包括监控图表配置、告警配置、数据查询、可视化最佳实践等"
+      },
+      {
+        "title": "monitoring-logging",
+        "name": "日志系统",
+        "prompt": "分析日志系统的实现，包括日志级别、日志格式、日志存储、日志查询、日志分析等技术细节"
+      },
+      {
+        "title": "monitoring-alerting",
+        "name": "告警机制",
+        "prompt": "详细分析告警机制的设计，包括告警规则配置、告警通知方式（邮件、短信、Webhook）、告警升级策略等"
+      }
+    ]
+  },
+  {
+    "title": "15、安全机制",
+    "prompt": "全面分析系统的安全机制和最佳实践",
+    "sections": [
+      {
+        "title": "security-authentication",
+        "name": "认证机制",
+        "prompt": "深入分析JWT认证机制，包括令牌生成、令牌验证、令牌刷新、会话管理、密码加密等安全实现，基于internal/middleware/auth.go"
+      },
+      {
+        "title": "security-authorization",
+        "name": "授权机制",
+        "prompt": "详细分析权限控制机制，包括RBAC模型、权限定义、权限检查、API权限控制、前端路由权限等实现"
+      },
+      {
+        "title": "security-input-validation",
+        "name": "输入验证",
+        "prompt": "分析输入验证策略，包括参数验证、SQL注入防护、XSS防护、CSRF防护、文件上传安全等技术实现"
+      },
+      {
+        "title": "security-data-protection",
+        "name": "数据保护",
+        "prompt": "详细分析数据保护措施，包括数据加密（存储加密、传输加密）、敏感数据脱敏、数据备份、数据访问控制等安全机制"
+      },
+      {
+        "title": "security-audit",
+        "name": "审计日志",
+        "prompt": "分析审计日志的实现，包括操作日志记录、用户行为追踪、安全事件记录、日志审计等技术细节"
+      }
+    ]
+  },
+  {
+    "title": "16、性能优化",
+    "prompt": "深入分析系统性能优化策略和最佳实践",
+    "sections": [
+      {
+        "title": "performance-database",
+        "name": "数据库性能优化",
+        "prompt": "详细分析数据库性能优化技术，包括索引优化、查询优化、连接池优化、分库分表、缓存策略等"
+      },
+      {
+        "title": "performance-api",
+        "name": "API性能优化",
+        "prompt": "深入分析API性能优化策略，包括响应缓存、并发控制、请求压缩、连接复用、批量操作等技术实现"
+      },
+      {
+        "title": "performance-frontend",
+        "name": "前端性能优化",
+        "prompt": "分析前端性能优化技术，包括组件懒加载、资源压缩、CDN加速、代码分割、虚拟滚动等优化策略"
+      },
+      {
+        "title": "performance-scaling",
+        "name": "扩展性优化",
+        "prompt": "详细分析系统的扩展性优化，包括服务水平扩展、负载均衡策略、读写分离、分片存储等技术实现"
+      },
+      {
+        "title": "performance-monitoring",
+        "name": "性能监控",
+        "prompt": "分析性能监控机制，包括性能指标采集、性能分析工具、性能瓶颈识别、性能调优流程等"
+      }
+    ]
+  },
+  {
+    "title": "17、高可用性与容灾",
+    "prompt": "全面分析系统的高可用性设计和容灾方案",
+    "sections": [
+      {
+        "title": "ha-service-availability",
+        "name": "服务高可用",
+        "prompt": "详细分析服务高可用策略，包括服务多实例部署、负载均衡、故障检测、自动重启、服务降级等技术实现"
+      },
+      {
+        "title": "ha-data-consistency",
+        "name": "数据一致性",
+        "prompt": "深入分析数据一致性保证机制，包括分布式事务、数据同步、主从复制、数据校验等技术实现"
+      },
+      {
+        "title": "ha-backup-recovery",
+        "name": "备份与恢复",
+        "prompt": "详细分析备份恢复策略，包括备份类型（全量、增量）、备份存储、数据恢复、恢复验证、灾难恢复流程等"
+      },
+      {
+        "title": "ha-disaster-recovery",
+        "name": "灾难恢复",
+        "prompt": "分析灾难恢复方案，包括异地容灾、故障切换、数据迁移、业务连续性保证等技术实现"
+      }
+    ]
+  },
+  {
+    "title": "18、测试策略",
+    "prompt": "详细分析系统测试策略和测试实践",
+    "sections": [
+      {
+        "title": "testing-unit",
+        "name": "单元测试",
+        "prompt": "分析单元测试策略，包括测试框架使用、测试用例设计、覆盖度评估、mock和stub等技术实现"
+      },
+      {
+        "title": "testing-integration",
+        "name": "集成测试",
+        "prompt": "详细分析集成测试方案，包括服务间通信测试、数据库集成测试、API集成测试、端到端测试等"
+      },
+      {
+        "title": "testing-performance",
+        "name": "性能测试",
+        "prompt": "分析性能测试策略，包括压力测试、负载测试、性能基准测试、性能瓶颈分析等"
+      },
+      {
+        "title": "testing-automation",
+        "name": "自动化测试",
+        "prompt": "详细分析自动化测试实现，包括CI/CD集成、测试自动化脚本、测试报告生成等"
+      }
+    ]
+  },
+  {
+    "title": "19、MCP协议实现",
+    "prompt": "深入分析MCP协议的实现和应用",
+    "sections": [
+      {
+        "title": "mcp-protocol-overview",
+        "name": "MCP协议概述",
+        "prompt": "详细说明MCP（Model Context Protocol）协议的概念、设计目标和在AI技术文档库中的应用场景"
+      },
+      {
+        "title": "mcp-server-implementation",
+        "name": "MCP服务端实现",
+        "prompt": "基于internal/service/mcp_service.go和internal/handler/mcp_handler.go，深入分析MCP服务端的技术实现，包括协议处理、资源管理、工具调用、上下文管理等"
+      },
+      {
+        "title": "mcp-client-integration",
+        "name": "MCP客户端集成",
+        "prompt": "分析如何将LAST-doc作为MCP服务器集成到AI助手（如Claude、ChatGPT）中，包括连接配置、认证授权、资源访问等技术细节"
+      },
+      {
+        "title": "mcp-tools",
+        "name": "MCP工具接口",
+        "prompt": "详细分析MCP工具接口的设计，包括工具定义、参数处理、结果返回、错误处理等技术实现"
+      }
+    ]
+  },
+  {
+    "title": "20、Troubleshooting指南",
+    "prompt": "提供常见问题的排查和解决方案",
+    "sections": [
+      {
+        "title": "troubleshooting-deployment",
+        "name": "部署问题排查",
+        "prompt": "详细分析部署过程中的常见问题和解决方案，包括服务启动失败、端口冲突、依赖问题、配置错误等"
+      },
+      {
+        "title": "troubleshooting-performance",
+        "name": "性能问题排查",
+        "prompt": "深入分析性能问题的诊断方法，包括响应慢、内存泄漏、CPU占用高、数据库慢查询等问题的排查步骤"
+      },
+      {
+        "title": "troubleshooting-search",
+        "name": "检索问题排查",
+        "prompt": "分析检索功能常见问题，包括搜索结果不准确、向量索引错误、embedding失败等问题的诊断和解决方法"
+      },
+      {
+        "title": "troubleshooting-integration",
+        "name": "集成问题排查",
+        "prompt": "详细分析外部集成中的常见问题，包括API调用失败、数据库连接问题、存储服务异常、MCP连接问题等"
+      }
+    ]
+  }
+]

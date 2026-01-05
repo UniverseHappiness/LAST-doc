@@ -1,0 +1,150 @@
+{
+  "classifyName": "Applications",
+  "confidence": "高",
+  "techStack": [
+    "Go 1.24 (后端)",
+    "Gin Web框架",
+    "Vue.js 3 (前端)",
+    "PostgreSQL 15 (数据库)",
+    "Docker & Docker Compose",
+    "gRPC (微服务通信)",
+    "Python 3.8+ (文档解析)",
+    "Nginx (反向代理)",
+    "Kubernetes (容器编排支持)",
+    "GORM (ORM)",
+    "Prometheus + Grafana (监控)",
+    "MinIO (对象存储)",
+    "pgvector (向量搜索)",
+    "OpenAI Embedding API"
+  ],
+  "projectScale": "大型",
+  "entrypoints": [
+    "cmd/main.go (Go后端主入口)",
+    "web/src/main.js (Vue前端入口)",
+    "python-parser-service/service/server.py (Python解析服务入口)",
+    "docker-compose.yml (Docker编排入口)",
+    "k8s/deployment.yaml (Kubernetes部署入口)"
+  ],
+  "modules": [
+    {
+      "name": "文档管理模块",
+      "relatedSources": [
+        "internal/handler/document_handler.go",
+        "internal/service/document_service.go",
+        "internal/repository/document_repository.go",
+        "internal/model/document.go"
+      ]
+    },
+    {
+      "name": "文档解析服务",
+      "relatedSources": [
+        "python-parser-service/",
+        "proto/document_parser.proto",
+        "internal/service/parser_service.go",
+        "internal/service/grpc_client.go"
+      ]
+    },
+    {
+      "name": "智能检索模块",
+      "relatedSources": [
+        "internal/handler/search_handler.go",
+        "internal/service/search_service.go",
+        "internal/service/embedding_service.go",
+        "internal/model/search_index.go"
+      ]
+    },
+    {
+      "name": "用户认证与授权",
+      "relatedSources": [
+        "internal/handler/user_handler.go",
+        "internal/service/user_service.go",
+        "internal/middleware/auth.go",
+        "internal/model/user.go"
+      ]
+    },
+    {
+      "name": "MCP协议支持",
+      "relatedSources": [
+        "internal/handler/mcp_handler.go",
+        "internal/service/mcp_service.go",
+        "internal/model/mcp.go",
+        "python-parser-service/"
+      ]
+    },
+    {
+      "name": "版本控制模块",
+      "relatedSources": [
+        "internal/repository/document_version_repository.go",
+        "internal/model/document.go"
+      ]
+    },
+    {
+      "name": "存储服务",
+      "relatedSources": [
+        "internal/service/storage_service.go",
+        "internal/service/s3_storage_service.go",
+        "internal/service/storage_factory.go"
+      ]
+    },
+    {
+      "name": "系统监控模块",
+      "relatedSources": [
+        "internal/handler/monitor_handler.go",
+        "internal/service/monitor_service.go",
+        "internal/handler/metrics_handler.go",
+        "internal/model/monitor.go"
+      ]
+    },
+    {
+      "name": "备份恢复模块",
+      "relatedSources": [
+        "internal/handler/backup_handler.go",
+        "internal/service/backup_service.go",
+        "internal/service/postgres_backup.go",
+        "scripts/backup-script.sh"
+      ]
+    },
+    {
+      "name": "前端应用",
+      "relatedSources": [
+        "web/src/",
+        "web/index.html",
+        "web/vite.config.js"
+      ]
+    },
+    {
+      "name": "API网关",
+      "relatedSources": [
+        "nginx.conf",
+        "internal/router/router.go"
+      ]
+    },
+    {
+      "name": "部署配置",
+      "relatedSources": [
+        "docker-compose.yml",
+        "Dockerfile",
+        "k8s/",
+        "Makefile"
+      ]
+    }
+  ],
+  "complexityLevel": "高",
+  "recommendedStrategy": "深度",
+  "evidence": [
+    "采用微服务架构，包含Go后端、Vue.js前端、Python解析服务三个独立服务",
+    "支持Docker Compose和Kubernetes两种部署方式，具备完整的容器化方案",
+    "实现前后端分离，包含RESTful API和gRPC两种通信协议",
+    "集成多种存储方案：本地文件系统、MinIO对象存储、PostgreSQL数据库",
+    "支持向量搜索功能，使用pgvector扩展和OpenAI Embedding API",
+    "实现完整的用户认证授权系统，包括JWT认证和API密钥管理",
+    "具备文档版本控制、元数据管理、标签系统等高级功能",
+    "集成系统监控和日志记录功能，支持Prometheus + Grafana",
+    "实现MCP协议支持，便于与AI助手集成",
+    "包含健康检查、熔断器、缓存等可靠性机制",
+    "支持高可用部署，后端服务可扩展多个实例",
+    "提供完整的数据库迁移方案和备份恢复机制",
+    "项目规模较大，包含16个核心模块和数十个功能组件"
+  ],
+  "summary": "AI技术文档库（LAST-doc）是一个基于微服务架构的智能文档管理系统，采用前后端分离设计。系统包含Go后端服务（使用Gin框架和GORM ORM）、Vue.js 3前端应用、Python文档解析服务三个核心组件。技术栈涵盖PostgreSQL数据库（支持向量搜索）、gRPC微服务通信、Docker容器化、Kubernetes编排、Nginx反向代理、Prometheus监控等。系统功能丰富，包括文档上传解析、版本控制、元数据管理、智能检索（关键词+语义搜索）、用户认证授权、MCP协议支持、API密钥管理、系统监控、备份恢复等。支持高可用部署，后端可扩展多个实例。项目结构清晰，遵循SOLID原则，采用分层架构（Handler、Service、Repository模式），具备完整的部署和运维方案，属于大型、高复杂度企业级应用。"
+}

@@ -156,15 +156,19 @@ type MCPSearchToolResult struct {
 
 // MCPSearchDocument MCP搜索文档
 type MCPSearchDocument struct {
-	ID          string  `json:"id"`
-	Name        string  `json:"name"`
-	Type        string  `json:"type"`
-	Version     string  `json:"version"`
-	Library     string  `json:"library"`
-	Score       float64 `json:"score"`
-	Content     string  `json:"content"`
-	ContentType string  `json:"content_type"`
-	Section     string  `json:"section"`
+	ID            string  `json:"id"`
+	DocumentID    string  `json:"document_id"` // 添加DocumentID字段
+	Name          string  `json:"name"`
+	Type          string  `json:"type"`
+	Version       string  `json:"version"`
+	Library       string  `json:"library"`
+	Score         float64 `json:"score"`
+	Content       string  `json:"content"`
+	Snippet       string  `json:"snippet"` // 包含查询词的上下文片段
+	ContentType   string  `json:"content_type"`
+	Section       string  `json:"section"`
+	StartPosition int     `json:"start_position"` // 片段在原文档中的起始位置（字符数）
+	EndPosition   int     `json:"end_position"`   // 片段在原文档中的结束位置（字符数）
 }
 
 // MCPAPIKey API密钥模型

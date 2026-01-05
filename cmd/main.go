@@ -164,7 +164,7 @@ func main() {
 	documentHandler := handler.NewDocumentHandler(documentService)
 	searchHandler := handler.NewSearchHandler(searchService)
 	aiFormatHandler := handler.NewAIFormatHandler(service.NewAIFriendlyFormatService(documentService), documentService)
-	mcpHandler := handler.NewMCPHandler(service.NewMCPService(db, searchService, documentService))
+	mcpHandler := handler.NewMCPHandler(service.NewMCPService(db, searchService, documentService, versionRepo, searchIndexRepo))
 	userHandler := handler.NewUserHandler(userService)
 	monitorHandler := handler.NewMonitorHandler(monitorService)
 	healthHandler := handler.NewHealthHandler(healthService)
