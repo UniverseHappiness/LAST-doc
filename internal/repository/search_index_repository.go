@@ -130,7 +130,7 @@ func (r *searchIndexRepository) GetByDocumentID(ctx context.Context, documentID 
 // GetByDocumentIDAndVersion 根据文档ID和版本获取搜索索引
 func (r *searchIndexRepository) GetByDocumentIDAndVersion(ctx context.Context, documentID, version string) ([]*model.SearchIndex, error) {
 	var indices []*model.SearchIndex
-	err := r.db.WithContext(ctx).Where("document_id = ? AND version = ?", documentID, version).Order("created_at DESC").Find(&indices).Error
+	err := r.db.WithContext(ctx).Where("document_id = ? AND TRIM(version) = ?", documentID, version).Order("created_at DESC").Find(&indices).Error
 	if err != nil {
 		return nil, err
 	}
@@ -289,7 +289,7 @@ func (r *searchIndexRepository) DeleteByDocumentID(ctx context.Context, document
 
 // DeleteByDocumentIDAndVersion 根据文档ID和版本删除搜索索引
 func (r *searchIndexRepository) DeleteByDocumentIDAndVersion(ctx context.Context, documentID, version string) error {
-	return r.db.WithContext(ctx).Where("document_id = ? AND version = ?", documentID, version).Delete(&model.SearchIndex{}).Error
+	return r.db.WithContext(ctx).Where("document_id = ? AND TRIM(version) = ?", documentID, version).Delete(&model.SearchIndex{}).Error
 }
 
 // Update 更新搜索索引
@@ -337,7 +337,7 @@ func (r *searchIndexRepository) applyFilters(db *gorm.DB, filters map[string]int
 	}
 
 	if version, ok := filters["version"]; ok && version != "" && version != nil {
-		db = db.Where("version = ?", version)
+		db = db.Where("TRIM(version) = ?", version)
 	}
 
 	if contentType, ok := filters["content_type"]; ok && contentType != "" && contentType != nil {

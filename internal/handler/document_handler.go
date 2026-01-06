@@ -56,7 +56,7 @@ func (h *DocumentHandler) UploadDocument(c *gin.Context) {
 		return
 	}
 
-	version := c.PostForm("version")
+	version := strings.TrimSpace(c.PostForm("version"))
 	if version == "" {
 		c.JSON(http.StatusBadRequest, gin.H{
 			"code":    400,
@@ -260,7 +260,7 @@ func (h *DocumentHandler) GetDocumentVersions(c *gin.Context) {
 // GetDocumentByVersion 根据版本获取文档
 func (h *DocumentHandler) GetDocumentByVersion(c *gin.Context) {
 	documentID := c.Param("id")
-	version := c.Param("version")
+	version := strings.TrimSpace(c.Param("version"))
 
 	// 添加调试日志
 	log.Printf("DEBUG: 获取文档版本 - 文档ID: %s, 版本: %s\n", documentID, version)

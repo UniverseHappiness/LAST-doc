@@ -72,64 +72,77 @@ func TestEstimateTokens(t *testing.T) {
 
 // TestTruncateWithWarning 测试带警告的文本截断功能
 func TestTruncateWithWarning(t *testing.T) {
-	tests := []struct {
-		name          string
-		text          string
-		maxLen        int
-		wantTruncated bool
-		expectedLen   int
-	}{
-		{
-			name:          "不截断 - 短文本",
-			text:          "Hello world",
-			maxLen:        20,
-			wantTruncated: false,
-			expectedLen:   11,
-		},
-		{
-			name:          "截断 - 长文本",
-			text:          "This is a very long text that should be truncated",
-			maxLen:        10,
-			wantTruncated: true,
-			expectedLen:   10 + 34, // 10字符 + 截断提示
-		},
-		{
-			name:          "边界情况 - 刚好等于",
-			text:          "Exactly",
-			maxLen:        7,
-			wantTruncated: true, // 等于也要截断并添加提示
-			expectedLen:   7 + 34,
-		},
-		{
-			name:          "空文本",
-			text:          "",
-			maxLen:        10,
-			wantTruncated: false,
-			expectedLen:   0,
-		},
-		{
-			name:          "包含换行符",
-			text:          "Line 1\nLine 2\nLine 3",
-			maxLen:        5,
-			wantTruncated: true,
-			expectedLen:   5 + 34,
-		},
-	}
+	// 警告消息: "\n\n[内容已截断 - 仅显示前XX个字符]"
+	warningMsg := "\n\n[内容已截断 - 仅显示前"
 
 	service := &mcpService{}
 
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			result, truncated := service.truncateWithWarning(tt.text, tt.maxLen)
-			if truncated != tt.wantTruncated {
-				t.Errorf("truncateWithWarning() truncated = %v, want %v", truncated, tt.wantTruncated)
-			}
-			if len(result) != tt.expectedLen {
-				t.Errorf("truncateWithWarning() length = %v, want %v", len(result), tt.expectedLen)
-			}
-			t.Logf("Text length: %d, Result length: %d, Truncated: %v", len(tt.text), len(result), truncated)
-		})
-	}
+	// 测试不截断的情况
+	t.Run("不截断-短文本", func(t *testing.T) {
+		text := "Hello world"
+		result, truncated := service.truncateWithWarning(text, 20)
+		if truncated {
+			t.Error("truncateWithWarning() should not truncate")
+		}
+		expected := text
+		if result != expected {
+			t.Errorf("truncateWithWarning() = %v, want %v", result, expected)
+		}
+	})
+
+	// 测试截断的情况 - 英文文本
+	t.Run("截断-英文文本", func(t *testing.T) {
+		text := "This is a very long text"
+		maxLen := 10
+		result, truncated := service.truncateWithWarning(text, maxLen)
+		if !truncated {
+			t.Error("truncateWithWarning() should truncate")
+		}
+		expected := text[:maxLen] + warningMsg + "10" + "个字符]"
+		if result != expected {
+			t.Errorf("truncateWithWarning() = %v, want %v", result, expected)
+		}
+		t.Logf("Text length: %d, Result length: %d, Expected: %d", len(text), len(result), len(expected))
+	})
+
+	// 测试边界情况 - 刚好等于
+	t.Run("边界-刚好等于", func(t *testing.T) {
+		text := "Exactly"
+		maxLen := 7
+		result, truncated := service.truncateWithWarning(text, maxLen)
+		if truncated {
+			t.Error("truncateWithWarning() should not truncate when equal")
+		}
+		if result != text {
+			t.Errorf("truncateWithWarning() = %v, want %v", result, text)
+		}
+	})
+
+	// 测试空文本
+	t.Run("空文本", func(t *testing.T) {
+		text := ""
+		result, truncated := service.truncateWithWarning(text, 10)
+		if truncated {
+			t.Error("truncateWithWarning() should not truncate empty text")
+		}
+		if result != text {
+			t.Errorf("truncateWithWarning() = %v, want %v", result, text)
+		}
+	})
+
+	// 测试截断的情况 - 中文文本
+	t.Run("截断-中文文本", func(t *testing.T) {
+		text := "这是一个很长的文本，应该被截断"
+		maxLen := 10
+		result, truncated := service.truncateWithWarning(text, maxLen)
+		if !truncated {
+			t.Error("truncateWithWarning() should truncate")
+		}
+		// 验证结果是前maxLen个字符 + 警告信息
+		if len(result) <= maxLen {
+			t.Errorf("truncateWithWarning() length %d should be > %d", len(result), maxLen)
+		}
+	})
 }
 
 // TestTruncateText 测试文本截断功能

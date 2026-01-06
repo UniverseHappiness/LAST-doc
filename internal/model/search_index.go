@@ -30,7 +30,7 @@ func (v *Vector) Scan(value interface{}) error {
 		return errors.New("type assertion to []byte failed")
 	}
 
-	return json.Unmarshal(bytes, *v)
+	return json.Unmarshal(bytes, v)
 }
 
 // SearchIndex 定义搜索索引模型

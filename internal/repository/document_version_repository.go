@@ -82,7 +82,7 @@ func (r *documentVersionRepository) GetByDocumentID(ctx context.Context, documen
 func (r *documentVersionRepository) GetByDocumentIDAndVersion(ctx context.Context, documentID, version string) (*model.DocumentVersion, error) {
 	var docVersion model.DocumentVersion
 	err := r.db.WithContext(ctx).
-		Where("document_id = ? AND version = ?", documentID, version).
+		Where("document_id = ? AND TRIM(version) = ?", documentID, version).
 		First(&docVersion).Error
 	if err != nil {
 		return nil, err
@@ -128,7 +128,7 @@ func (r *documentVersionRepository) Update(ctx context.Context, id string, updat
 func (r *documentVersionRepository) UpdateByDocumentIDAndVersion(ctx context.Context, documentID, version string, updates map[string]interface{}) error {
 	return r.db.WithContext(ctx).
 		Model(&model.DocumentVersion{}).
-		Where("document_id = ? AND version = ?", documentID, version).
+		Where("document_id = ? AND TRIM(version) = ?", documentID, version).
 		Updates(updates).Error
 }
 
@@ -136,7 +136,7 @@ func (r *documentVersionRepository) UpdateByDocumentIDAndVersion(ctx context.Con
 func (r *documentVersionRepository) UpdateContent(ctx context.Context, documentID, version string, content string, status model.DocumentStatus) error {
 	return r.db.WithContext(ctx).
 		Model(&model.DocumentVersion{}).
-		Where("document_id = ? AND version = ?", documentID, version).
+		Where("document_id = ? AND TRIM(version) = ?", documentID, version).
 		Updates(map[string]interface{}{
 			"content": content,
 			"status":  status,
@@ -147,7 +147,7 @@ func (r *documentVersionRepository) UpdateContent(ctx context.Context, documentI
 func (r *documentVersionRepository) UpdateStatus(ctx context.Context, documentID, version string, status model.DocumentStatus) error {
 	return r.db.WithContext(ctx).
 		Model(&model.DocumentVersion{}).
-		Where("document_id = ? AND version = ?", documentID, version).
+		Where("document_id = ? AND TRIM(version) = ?", documentID, version).
 		Update("status", status).Error
 }
 

@@ -1,6 +1,7 @@
 package service
 
 import (
+	"strconv"
 	"sync"
 	"time"
 )
@@ -89,5 +90,5 @@ func (m *memoryCache) Clear() error {
 // searchCacheKey 生成搜索缓存键
 func searchCacheKey(query, searchType string, filters map[string]interface{}, page, size int) string {
 	// 简单的键生成，实际项目中可以使用更复杂的哈希算法
-	return query + "|" + searchType + "|" + string(page) + "|" + string(size)
+	return query + "|" + searchType + "|" + strconv.Itoa(page) + "|" + strconv.Itoa(size)
 }

@@ -131,7 +131,7 @@ func (s *mcpService) ListTools(ctx context.Context, params *model.MCPToolListPar
 				"properties": map[string]interface{}{
 					"query": map[string]interface{}{
 						"type":        "string",
-						"description": "搜索查询关键词",
+						"description": "搜索查询关键词（多个关键词用空格分隔，可提高搜索精度）",
 					},
 					"types": map[string]interface{}{
 						"type": "array",
