@@ -1,11 +1,1 @@
-{
-  "mcpServers": {
-    "ai-doc-library": {
-      "type": "streamable-http",
-      "url": "http://localhost/mcp",
-      "headers": {
-        "API_KEY": "702e6450-4248-49e9-9484-ae9f5b99bce3"
-      }
-    }
-  }
-}
+{"mcpServers":{"ai-doc-library":{"type":"streamable-http","url":"http://localhost/mcp","headers":{"API_KEY":"702e6450-4248-49e9-9484-ae9f5b99bce3"},"disabled":false,"alwaysAllow":[]}}}
