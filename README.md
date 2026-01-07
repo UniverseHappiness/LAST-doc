@@ -23,6 +23,10 @@
 
 ![项目展示](assets/main.gif)
 
+### 端到端视频演示链接
+
+链接：https://wx.mail.qq.com/s?k=vnv2sVppSzgsfztCKD
+
 ### 功能演示对比
 
 #### 使用技术文档库的AI集成演示
@@ -30,6 +34,7 @@
 **🎥 [观看完整演示视频](assets/使用技术文档库.mp4)**
 
 通过MCP协议，AI助手可以直接访问技术文档库，实现：
+
 - 🔄 **智能对话**：AI助手自动查询文档库，获取精准的技术信息
 - ⚡ **快速响应**：秒级语义搜索，支持关键词、语义和混合搜索
 - 📚 **全面覆盖**：自动整合多文档信息，避免遗漏重要内容
@@ -39,7 +44,6 @@
 ![传统方式](assets/未使用技术文档库.gif)
 
 *传统方式容易使用旧版本命令，导致信息不准确，且无法自动整合多文档信息。*
-
 
 > 💡 **提示**：点击上方视频链接即可观看"使用技术文档库"的完整演示，体验AI助手通过MCP协议直接查询文档库的强大功能。
 
@@ -57,6 +61,7 @@ AI技术文档库是一个综合性的企业级文档管理系统，采用前后
 ## 功能特性
 
 ### 文档管理
+
 - **多格式支持**: 支持PDF、DOCX、Markdown等多种文档格式
 - **文档解析**: 自动提取文档内容和元数据
 - **版本控制**: 完整的文档版本管理，支持查看和恢复历史版本
@@ -64,6 +69,7 @@ AI技术文档库是一个综合性的企业级文档管理系统，采用前后
 - **标签系统**: 灵活的标签系统，便于文档分类和检索
 
 ### 智能检索
+
 - **关键词搜索**: 基于BM25算法的传统文本搜索
 - **语义搜索**: 基于向量嵌入的语义相似度搜索
 - **混合搜索**: 结合关键词和语义搜索的综合搜索
@@ -71,18 +77,21 @@ AI技术文档库是一个综合性的企业级文档管理系统，采用前后
 - **搜索结果增强**: 显示文档所属库信息、相关度评分和内容片段
 
 ### AI集成
+
 - **MCP协议支持**: 实现Model Context Protocol，便于与AI助手集成
 - **API密钥管理**: 安全的API密钥创建、管理和删除功能
 - **向量嵌入**: 集成OpenAI兼容的embedding服务，支持语义向量化
 - **智能缓存**: 缓存搜索结果和embedding向量，提升响应速度
 
 ### 系统管理
+
 - **用户管理**: 完整的用户注册、登录、认证和权限管理
 - **系统监控**: 实时性能监控、日志管理和系统状态展示
 - **数据备份**: 数据库备份和恢复机制
 - **存储管理**: 支持本地存储和MinIO分布式存储
 
 ### 高可用特性
+
 - **负载均衡**: Nginx反向代理和负载均衡
 - **多实例部署**: 支持多个后端实例并行运行
 - **健康检查**: 自动检测服务健康状态
@@ -139,31 +148,37 @@ AI技术文档库是一个综合性的企业级文档管理系统，采用前后
 ### 组件说明
 
 #### 前端服务
+
 - **技术**: Vue.js 3 + Bootstrap 5 + Vite
 - **职责**: 用户界面、交互逻辑、API调用
 - **特性**: 响应式设计、Chart.js数据可视化
 
 #### 后端服务
+
 - **技术**: Go 1.24 + Gin + GORM
 - **职责**: RESTful API、业务逻辑、数据访问
 - **特性**: 双实例部署、负载均衡、健康检查
 
 #### 文档解析服务
+
 - **技术**: Python 3.8+ + gRPC
 - **职责**: PDF和DOCX文档解析、内容提取
 - **特性**: PyPDF2、pdfplumber、python-docx
 
 #### 数据库
+
 - **技术**: PostgreSQL 15 + pgvector
 - **职责**: 数据存储、向量检索
 - **特性**: 支持向量搜索、数据持久化
 
 #### 反向代理
+
 - **技术**: Nginx
 - **职责**: 静态文件服务、API代理、负载均衡
 - **特性**: 高性能、高并发处理
 
 #### 监控系统
+
 - **技术**: Prometheus + Grafana
 - **职责**: 性能监控、数据可视化、告警
 - **特性**: 实时监控、丰富的可视化面板
@@ -171,6 +186,7 @@ AI技术文档库是一个综合性的企业级文档管理系统，采用前后
 ## 技术栈
 
 ### 后端技术栈
+
 - **编程语言**: Go 1.24
 - **Web框架**: Gin 1.9.1
 - **ORM**: GORM 1.25.4
@@ -181,6 +197,7 @@ AI技术文档库是一个综合性的企业级文档管理系统，采用前后
 - **监控**: Prometheus client
 
 ### 前端技术栈
+
 - **框架**: Vue.js 3.3.4
 - **UI库**: Bootstrap 5.3.0
 - **图标**: Bootstrap Icons 1.13.1
@@ -189,6 +206,7 @@ AI技术文档库是一个综合性的企业级文档管理系统，采用前后
 - **可视化**: Chart.js 4.4.0
 
 ### 文档解析服务
+
 - **编程语言**: Python 3.8+
 - **gRPC框架**: gRPC
 - **文档解析**:
@@ -196,6 +214,7 @@ AI技术文档库是一个综合性的企业级文档管理系统，采用前后
   - DOCX: python-docx
 
 ### 部署和运维
+
 - **容器化**: Docker & Docker Compose
 - **编排**: Kubernetes (可选)
 - **反向代理**: Nginx
@@ -386,14 +405,14 @@ kubectl apply -f k8s/ingress.yaml
 
 ### 部署对比
 
-| 特性 | Docker Compose | Kubernetes |
-|------|---------------|------------|
-| 部署复杂度 | ⭐ 简单 | ⭐⭐⭐ 复杂 |
-| 资源需求 | 低 | 中高 |
-| 管理成本 | 低 | 中 |
-| 扩展能力 | 手动 | 自动 |
-| 高可用性 | 中 | 高 |
-| 适用场景 | 开发/测试/小规模生产 | 大规模生产 |
+| 特性       | Docker Compose       | Kubernetes  |
+| ---------- | -------------------- | ----------- |
+| 部署复杂度 | ⭐ 简单              | ⭐⭐⭐ 复杂 |
+| 资源需求   | 低                   | 中高        |
+| 管理成本   | 低                   | 中          |
+| 扩展能力   | 手动                 | 自动        |
+| 高可用性   | 中                   | 高          |
+| 适用场景   | 开发/测试/小规模生产 | 大规模生产  |
 
 ## API文档
 
@@ -406,16 +425,19 @@ kubectl apply -f k8s/ingress.yaml
 ### 主要端点
 
 #### 健康检查
+
 - **GET** `/health` - 检查服务健康状态
 - **GET** `/metrics` - 获取Prometheus监控指标
 
 #### 用户管理
+
 - **POST** `/users/register` - 用户注册
 - **POST** `/users/login` - 用户登录
 - **GET** `/users/profile` - 获取用户信息
 - **PUT** `/users/profile` - 更新用户信息
 
 #### 文档管理
+
 - **GET** `/documents` - 获取文档列表（支持分页、筛选）
 - **POST** `/documents` - 上传新文档
 - **GET** `/documents/{id}` - 获取文档详情
@@ -423,18 +445,21 @@ kubectl apply -f k8s/ingress.yaml
 - **DELETE** `/documents/{id}` - 删除文档
 
 #### 文档版本
+
 - **GET** `/documents/{id}/versions` - 获取文档版本列表
 - **POST** `/documents/{id}/versions` - 创建新版本
 - **GET** `/documents/{id}/versions/{version}` - 获取特定版本详情
 - **DELETE** `/documents/{id}/versions/{version}` - 删除特定版本
 
 #### 文档元数据
+
 - **GET** `/documents/{id}/metadata` - 获取文档元数据
 - **POST** `/documents/{id}/metadata` - 添加文档元数据
 - **PUT** `/documents/{id}/metadata/{key}` - 更新元数据
 - **DELETE** `/documents/{id}/metadata/{key}` - 删除元数据
 
 #### 文档检索
+
 - **POST** `/search` - 执行文档搜索
 - **GET** `/search` - 以GET方式执行文档搜索
 - **POST** `/search/documents/{document_id}/versions/{version}/index` - 为指定文档版本构建搜索索引
@@ -444,17 +469,20 @@ kubectl apply -f k8s/ingress.yaml
 - **POST** `/search/clear-cache` - 清空搜索缓存
 
 #### API密钥管理
+
 - **GET** `/api-keys` - 获取用户的所有API密钥
 - **POST** `/api-keys` - 创建新的API密钥
 - **DELETE** `/api-keys/{id}` - 删除API密钥（软删除）
 - **POST** `/api-keys/{id}/revoke` - 撤销API密钥
 
 #### 系统监控
+
 - **GET** `/monitor/metrics` - 获取系统性能指标
 - **GET** `/monitor/logs` - 获取系统日志
 - **POST** `/monitor/clear-cache` - 清空监控缓存
 
 #### 数据备份
+
 - **POST** `/backup/create` - 创建数据备份
 - **GET** `/backup/list` - 列出所有备份
 - **POST** `/backup/restore/{id}` - 恢复指定备份
@@ -570,9 +598,11 @@ python test_mcp_client.py --key YOUR_API_KEY --test
 ### 可用的MCP工具
 
 #### 1. search_documents
+
 搜索技术文档，支持关键词和语义搜索。
 
 **参数:**
+
 - `query` (必需): 搜索查询关键词
 - `types` (可选): 文档类型过滤器，如 ["pdf", "docx", "markdown"]
 - `version` (可选): 文档版本过滤器
@@ -580,6 +610,7 @@ python test_mcp_client.py --key YOUR_API_KEY --test
 - `content_length` (可选): 每个搜索结果的内容片段最大字符数，默认为1000
 
 **示例:**
+
 ```json
 {
   "jsonrpc": "2.0",
@@ -597,9 +628,11 @@ python test_mcp_client.py --key YOUR_API_KEY --test
 ```
 
 #### 2. get_document_content
+
 获取指定文档的详细内容。
 
 **参数:**
+
 - `document_id` (必需): 文档ID
 - `version` (可选): 文档版本（推荐使用get_documents_by_library返回的版本ID）
 - `start_position` (可选): 起始位置（字符位置）
@@ -609,6 +642,7 @@ python test_mcp_client.py --key YOUR_API_KEY --test
 - `smart_truncate` (可选): 是否启用智能截断模式，默认为true
 
 **示例:**
+
 ```json
 {
   "jsonrpc": "2.0",
@@ -626,14 +660,17 @@ python test_mcp_client.py --key YOUR_API_KEY --test
 ```
 
 #### 3. get_documents_by_library
+
 根据所属库名称获取文档列表。
 
 **参数:**
+
 - `library` (必需): 库名称
 - `page` (可选): 页码，默认为1
 - `size` (可选): 每页数量，默认为10
 
 **示例:**
+
 ```json
 {
   "jsonrpc": "2.0",
@@ -690,10 +727,10 @@ python test_mcp_client.py --key YOUR_API_KEY --test
 ### 日志管理
 
 - **日志路径**:
+
   - Nginx日志: `./logs/nginx/`
   - 后端日志: `./logs/backend/` 和 `./logs/backend2/`
   - PostgreSQL日志: 容器内部日志
-
 - **日志级别**: 支持DEBUG、INFO、WARN、ERROR四种级别
 
 ### 数据备份
@@ -820,13 +857,13 @@ bash test_reliability.sh
 
 当前测试覆盖率（部分达到测评要求）：
 
-| 包路径 | 覆盖率 | 状态 |
-|-------|--------|------|
-| internal/model | 96.5% | ✅ 达标（>80%） |
-| internal/middleware | 8.3% | ⚠️ 待提升 |
-| internal/repository | 0.5% | ⚠️ 待提升 |
-| internal/service | 0.8% | ⚠️ 待提升 |
-| internal/handler | 0.0% | ⚠️ 待提升 |
+| 包路径              | 覆盖率 | 状态            |
+| ------------------- | ------ | --------------- |
+| internal/model      | 96.5%  | ✅ 达标（>80%） |
+| internal/middleware | 8.3%   | ⚠️ 待提升     |
+| internal/repository | 0.5%   | ⚠️ 待提升     |
+| internal/service    | 0.8%   | ⚠️ 待提升     |
+| internal/handler    | 0.0%   | ⚠️ 待提升     |
 
 详细的覆盖率报告请参考 [`TEST_COVERAGE_REPORT.md`](TEST_COVERAGE_REPORT.md)。
 
@@ -975,6 +1012,7 @@ make coverage
 ```
 
 类型包括：
+
 - `feat`: 新功能
 - `fix`: 修复bug
 - `docs`: 文档更新
@@ -996,6 +1034,7 @@ make coverage
 ### 代码审查
 
 所有代码提交都需要经过代码审查：
+
 - 确保所有测试通过
 - 代码符合项目规范
 - 更新相关文档
@@ -1010,6 +1049,7 @@ make coverage
 ### v0.6.0 (2026-01-06)
 
 #### 新增功能
+
 - **系统监控功能**: 完整的性能监控、日志管理和系统状态展示功能
 - **性能报告API**: 提供系统性能指标和统计数据的API接口
 - **API网关功能**: 实现请求路由、负载均衡和请求认证机制
@@ -1018,6 +1058,7 @@ make coverage
 - **多数据库节点**: 支持主从复制，提高数据可靠性
 
 #### 技术改进
+
 - **性能监控服务**: 实现请求统计、数据库查询监控和缓存性能跟踪
 - **日志管理系统**: 支持按时间和类型筛选日志，提供详细日志查看功能
 - **网关路由机制**: 优化API请求处理流程，支持负载均衡和认证
@@ -1026,6 +1067,7 @@ make coverage
 - **Kubernetes部署**: 提供完整的K8s部署配置文件
 
 #### 文档更新
+
 - 完善README文档，新增监控和运维章节
 - 添加Kubernetes部署指南
 - 更新API文档，新增监控相关接口
@@ -1036,11 +1078,13 @@ make coverage
 ### v0.5.0 (2026-01-03)
 
 #### 新增功能
+
 - **搜索结果增强**: 搜索文档时显示所属库信息，便于用户了解文档来源
 - **按库获取文档**: 新增 `get_documents_by_library` MCP工具，支持根据库名称获取文档列表
 - **分页查询支持**: 按库获取文档功能支持分页参数，可灵活控制返回结果数量
 
 #### 技术改进
+
 - **搜索结果模型扩展**: 在 `SearchResult` 和 `MCPSearchDocument` 中添加 `Library` 字段
 - **元数据提取优化**: 从搜索索引元数据中提取库信息并显示在搜索结果中
 - **MCP工具扩展**: 新增工具支持按库筛选文档，提供更精准的文档检索能力
@@ -1050,6 +1094,7 @@ make coverage
 ### v0.4.0 (2025-12-15)
 
 #### 新增功能
+
 - **用户管理系统**: 完整的用户注册、登录、认证功能
 - **API密钥管理**: 安全的API密钥创建、管理和删除功能
 - **MCP协议支持**: 实现Model Context Protocol，支持AI助手集成
@@ -1057,6 +1102,7 @@ make coverage
 - **软删除机制**: API密钥采用软删除，提高数据安全性
 
 #### 技术改进
+
 - **认证中间件**: 实现基于JWT的用户认证和授权
 - **数据库迁移**: 添加用户表和API密钥表
 - **前端组件优化**: 修复模态框显示问题，改善用户体验
@@ -1067,12 +1113,14 @@ make coverage
 ### v0.3.0 (2025-12-14)
 
 #### 新增功能
+
 - **OpenAI兼容的embedding服务**: 支持配置自定义embedding API
 - **向量搜索**: 基于向量嵌入的语义搜索功能
 - **混合搜索**: 结合关键词和语义搜索的综合搜索
 - **搜索缓存**: 缓存搜索结果和embedding向量
 
 #### 技术改进
+
 - **embedding服务接口**: 添加OpenAI兼容的embedding服务接口
 - **搜索性能优化**: 优化搜索算法和索引结构
 - **缓存策略**: 实现智能缓存策略，提升搜索性能
@@ -1082,6 +1130,7 @@ make coverage
 ### v0.2.0 (2025-12-06)
 
 #### 新增功能
+
 - **文档管理**: 支持多种格式文档的上传、下载、预览和管理
 - **文档解析**: 自动解析PDF和DOCX文档内容，提取文本和元数据
 - **版本控制**: 支持文档版本管理，可查看和恢复历史版本
@@ -1090,6 +1139,7 @@ make coverage
 - **智能检索**: 支持关键词搜索、语义搜索和混合搜索
 
 #### 技术架构
+
 - **前后端分离**: Vue.js前端 + Go后端架构
 - **微服务设计**: Python解析服务的gRPC微服务
 - **数据库设计**: PostgreSQL + pgvector扩展支持向量搜索

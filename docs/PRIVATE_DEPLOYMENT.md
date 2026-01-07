@@ -24,12 +24,12 @@
 
 ### 2.1 硬件要求
 
-| 组件 | 最小配置 | 推荐配置 | 说明 |
-|------|---------|---------|------|
-| CPU | 4核 | 8核+ | 支持文档解析和搜索 |
-| 内存 | 8GB | 16GB+ | 支持并发访问和缓存 |
-| 存储 | 100GB | 500GB+ | 存储文档和数据库 |
-| 网络 | 1Gbps | 10Gbps | 支持文档上传下载 |
+| 组件 | 最小配置 | 推荐配置 | 说明               |
+| ---- | -------- | -------- | ------------------ |
+| CPU  | 4核      | 8核+     | 支持文档解析和搜索 |
+| 内存 | 8GB      | 16GB+    | 支持并发访问和缓存 |
+| 存储 | 100GB    | 500GB+   | 存储文档和数据库   |
+| 网络 | 1Gbps    | 10Gbps   | 支持文档上传下载   |
 
 ### 2.2 软件要求
 
@@ -414,10 +414,10 @@ upstream ai_doc_backend {
     server 192.168.1.101:8080 weight=1 max_fails=3 fail_timeout=30s;
     server 192.168.1.102:8080 weight=1 max_fails=3 fail_timeout=30s;
     server 192.168.1.103:8080 weight=1 max_fails=3 fail_timeout=30s;
-    
+  
     # 最少连接算法（推荐）
     least_conn;
-    
+  
     keepalive 32;
     keepalive_timeout 60s;
 }
@@ -425,29 +425,29 @@ upstream ai_doc_backend {
 server {
     listen 80;
     server_name ai-doc.internal;
-    
+  
     # 前端静态文件
     location / {
         root /usr/share/nginx/html;
         try_files $uri $uri/ /index.html;
     }
-    
+  
     # API代理
     location /api/ {
         proxy_pass http://ai_doc_backend;
         proxy_set_header Host $host;
         proxy_set_header X-Real-IP $remote_addr;
         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-        
+      
         # 超时配置
         proxy_connect_timeout 60s;
         proxy_send_timeout 60s;
         proxy_read_timeout 60s;
-        
+      
         # 支持文件上传
         client_max_body_size 100M;
     }
-    
+  
     # MCP协议代理
     location /mcp {
         proxy_pass http://ai_doc_backend;
@@ -624,7 +624,7 @@ func isAllowedIP(ip string) bool {
 func IPWhitelist() gin.HandlerFunc {
     return func(c *gin.Context) {
         clientIP := c.ClientIP()
-        
+      
         // 检查X-Forwarded-For头（代理场景）
         if forwardedFor := c.GetHeader("X-Forwarded-For"); forwardedFor != "" {
             clientIP = strings.Split(forwardedFor, ",")[0]
@@ -976,12 +976,9 @@ kubectl rollout undo deployment/ai-doc-backend -n ai-doc
 
 如需技术支持，请联系：
 
-- 技术支持邮箱: support@yourcompany.com
-- 文档地址: http://ai-doc.internal/docs
-- 问题反馈: http://ai-doc.internal/issues
+- 问题反馈: [GitHub · Where software is built](https://github.com/UniverseHappiness/LAST-doc/issues)
 
 ---
 
-**文档版本**: v1.0.0  
-**最后更新**: 2026-01-03  
-**维护人员**: 运维团队
+**文档版本**: v1.0.0
+**最后更新**: 2026-01-03
