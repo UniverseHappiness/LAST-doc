@@ -1124,7 +1124,7 @@ make coverage
 
 - **项目地址**: https://github.com/UniverseHappiness/LAST-doc
 - **问题反馈**: [GitHub Issues](https://github.com/UniverseHappiness/LAST-doc/issues)
-- **文档**: [项目Wiki](https://github.com/UniverseHappiness/LAST-doc/wiki)
+- **文档**: [项目Wiki](https://github.com/UniverseHappiness/LAST-doc/tree/main/.cospec/wiki)
 
 ---
 
