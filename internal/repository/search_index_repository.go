@@ -3,6 +3,7 @@ package repository
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"log"
 	"strings"
@@ -10,6 +11,9 @@ import (
 	"github.com/UniverseHappiness/LAST-doc/internal/model"
 	"gorm.io/gorm"
 )
+
+// ErrRecordNotFound 记录未找到错误
+var ErrRecordNotFound = errors.New("record not found")
 
 // SearchIndexRepository 搜索索引仓库接口
 type SearchIndexRepository interface {

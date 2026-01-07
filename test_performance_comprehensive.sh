@@ -66,7 +66,7 @@ print_header "环境准备"
 print_test "获取用户Token"
 response=$(curl -s -X POST "$BACKEND_URL/api/v1/auth/login" \
     -H "Content-Type: application/json" \
-    -d '{"username":"admin","password":"admin"}')
+    -d '{"username":"admin","password":"123456"}')
 
 if echo "$response" | grep -q "token"; then
     JWT_TOKEN=$(echo "$response" | grep -o '"token":"[^"]*"' | cut -d'"' -f4)

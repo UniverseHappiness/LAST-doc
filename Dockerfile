@@ -45,17 +45,19 @@ RUN go mod download || \
     (echo "第二次重试..." && sleep 3 && go mod download) || \
     echo "警告：Go模块下载失败，依赖vendor目录"
 
-# 复制源代码和可能的vendor目录
-COPY . .
+# 复制源代码（排除data目录和测试文件）
+COPY cmd/ ./cmd/
+COPY internal/ ./internal/
+COPY proto/ ./proto/
+COPY go.mod go.sum ./
 
-# 如果vendor目录存在，使用vendor模式构建
-RUN if [ -d "vendor" ]; then \
-        echo "使用vendor模式构建..."; \
-        CGO_ENABLED=0 GOOS=linux go build -a -installsuffix cgo -mod=vendor -o main cmd/main.go; \
-    else \
-        echo "使用模块模式构建..."; \
-        CGO_ENABLED=0 GOOS=linux go build -a -installsuffix cgo -o main cmd/main.go; \
-    fi
+# 删除所有测试文件，包括*_test.go和*_test_manual_mock.go
+RUN find . -name "*_test*.go" -delete && \
+    rm -f cmd/main_test.go
+
+# 清理并更新依赖，然后构建
+RUN go mod tidy && \
+    CGO_ENABLED=0 GOOS=linux go build -a -installsuffix cgo -o main cmd/main.go
 
 # 运行阶段
 FROM alpine:latest

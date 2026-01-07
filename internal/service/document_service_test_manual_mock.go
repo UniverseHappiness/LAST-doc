@@ -2,8 +2,10 @@ package service
 
 import (
 	"context"
+	"io"
 	"mime/multipart"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
@@ -11,6 +13,80 @@ import (
 	"github.com/UniverseHappiness/LAST-doc/internal/model"
 	"github.com/UniverseHappiness/LAST-doc/internal/repository"
 )
+
+// MockSearchService 模拟SearchService
+type MockSearchService struct {
+	mock.Mock
+	BuildIndexFunc           func(ctx context.Context, documentID, version string) error
+	BuildIndexBatchFunc      func(ctx context.Context, indices []*model.SearchIndex) error
+	SearchFunc               func(ctx context.Context, request *model.SearchRequest) (*model.SearchResponse, error)
+	GetIndexingStatusFunc    func(ctx context.Context, documentID string) (map[string]interface{}, error)
+	DeleteIndexFunc          func(ctx context.Context, documentID string) error
+	DeleteIndexByVersionFunc func(ctx context.Context, documentID, version string) error
+	ClearCacheFunc           func() error
+}
+
+func (m *MockSearchService) BuildIndex(ctx context.Context, documentID, version string) error {
+	if m.BuildIndexFunc != nil {
+		return m.BuildIndexFunc(ctx, documentID, version)
+	}
+	args := m.Called(ctx, documentID, version)
+	return args.Error(0)
+}
+
+func (m *MockSearchService) BuildIndexBatch(ctx context.Context, indices []*model.SearchIndex) error {
+	if m.BuildIndexBatchFunc != nil {
+		return m.BuildIndexBatchFunc(ctx, indices)
+	}
+	args := m.Called(ctx, indices)
+	return args.Error(0)
+}
+
+func (m *MockSearchService) Search(ctx context.Context, request *model.SearchRequest) (*model.SearchResponse, error) {
+	if m.SearchFunc != nil {
+		return m.SearchFunc(ctx, request)
+	}
+	args := m.Called(ctx, request)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).(*model.SearchResponse), args.Error(1)
+}
+
+func (m *MockSearchService) GetIndexingStatus(ctx context.Context, documentID string) (map[string]interface{}, error) {
+	if m.GetIndexingStatusFunc != nil {
+		return m.GetIndexingStatusFunc(ctx, documentID)
+	}
+	args := m.Called(ctx, documentID)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).(map[string]interface{}), args.Error(1)
+}
+
+func (m *MockSearchService) DeleteIndex(ctx context.Context, documentID string) error {
+	if m.DeleteIndexFunc != nil {
+		return m.DeleteIndexFunc(ctx, documentID)
+	}
+	args := m.Called(ctx, documentID)
+	return args.Error(0)
+}
+
+func (m *MockSearchService) DeleteIndexByVersion(ctx context.Context, documentID, version string) error {
+	if m.DeleteIndexByVersionFunc != nil {
+		return m.DeleteIndexByVersionFunc(ctx, documentID, version)
+	}
+	args := m.Called(ctx, documentID, version)
+	return args.Error(0)
+}
+
+func (m *MockSearchService) ClearCache() error {
+	if m.ClearCacheFunc != nil {
+		return m.ClearCacheFunc()
+	}
+	args := m.Called()
+	return args.Error(0)
+}
 
 // MockDocumentRepository 模拟DocumentRepository
 type MockDocumentRepository struct {
@@ -65,6 +141,59 @@ func (m *MockDocumentRepository) Delete(ctx context.Context, id string) error {
 	return args.Error(0)
 }
 
+func (m *MockDocumentRepository) Count(ctx context.Context, filters map[string]interface{}) (int64, error) {
+	args := m.Called(ctx, filters)
+	return args.Get(0).(int64), args.Error(1)
+}
+
+func (m *MockDocumentRepository) GetByLibrary(ctx context.Context, library string, page, size int) ([]*model.Document, int64, error) {
+	args := m.Called(ctx, library, page, size)
+	if args.Get(0) == nil {
+		return nil, args.Get(1).(int64), args.Error(2)
+	}
+	return args.Get(0).([]*model.Document), args.Get(1).(int64), args.Error(2)
+}
+
+func (m *MockDocumentRepository) GetByLibraryAndVersion(ctx context.Context, library, version string, page, size int) ([]*model.Document, int64, error) {
+	args := m.Called(ctx, library, version, page, size)
+	if args.Get(0) == nil {
+		return nil, args.Get(1).(int64), args.Error(2)
+	}
+	return args.Get(0).([]*model.Document), args.Get(1).(int64), args.Error(2)
+}
+
+func (m *MockDocumentRepository) GetByName(ctx context.Context, name string, page, size int) ([]*model.Document, int64, error) {
+	args := m.Called(ctx, name, page, size)
+	if args.Get(0) == nil {
+		return nil, args.Get(1).(int64), args.Error(2)
+	}
+	return args.Get(0).([]*model.Document), args.Get(1).(int64), args.Error(2)
+}
+
+func (m *MockDocumentRepository) GetByTag(ctx context.Context, tag string, page, size int) ([]*model.Document, int64, error) {
+	args := m.Called(ctx, tag, page, size)
+	if args.Get(0) == nil {
+		return nil, args.Get(1).(int64), args.Error(2)
+	}
+	return args.Get(0).([]*model.Document), args.Get(1).(int64), args.Error(2)
+}
+
+func (m *MockDocumentRepository) GetByType(ctx context.Context, docType model.DocumentType, page, size int) ([]*model.Document, int64, error) {
+	args := m.Called(ctx, docType, page, size)
+	if args.Get(0) == nil {
+		return nil, args.Get(1).(int64), args.Error(2)
+	}
+	return args.Get(0).([]*model.Document), args.Get(1).(int64), args.Error(2)
+}
+
+func (m *MockDocumentRepository) GetByVersion(ctx context.Context, version string, page, size int) ([]*model.Document, int64, error) {
+	args := m.Called(ctx, version, page, size)
+	if args.Get(0) == nil {
+		return nil, args.Get(1).(int64), args.Error(2)
+	}
+	return args.Get(0).([]*model.Document), args.Get(1).(int64), args.Error(2)
+}
+
 // MockDocumentVersionRepository 模拟DocumentVersionRepository
 type MockDocumentVersionRepository struct {
 	mock.Mock
@@ -112,6 +241,57 @@ func (m *MockDocumentVersionRepository) GetByDocumentID(ctx context.Context, doc
 	return args.Get(0).([]*model.DocumentVersion), args.Error(1)
 }
 
+func (m *MockDocumentVersionRepository) Count(ctx context.Context, documentID string) (int64, error) {
+	args := m.Called(ctx, documentID)
+	return args.Get(0).(int64), args.Error(1)
+}
+
+func (m *MockDocumentVersionRepository) Delete(ctx context.Context, id string) error {
+	args := m.Called(ctx, id)
+	return args.Error(0)
+}
+
+func (m *MockDocumentVersionRepository) DeleteByDocumentID(ctx context.Context, documentID string) error {
+	args := m.Called(ctx, documentID)
+	return args.Error(0)
+}
+
+func (m *MockDocumentVersionRepository) GetByID(ctx context.Context, id string) (*model.DocumentVersion, error) {
+	args := m.Called(ctx, id)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).(*model.DocumentVersion), args.Error(1)
+}
+
+func (m *MockDocumentVersionRepository) GetVersionsByStatus(ctx context.Context, documentID string, status model.DocumentStatus) ([]*model.DocumentVersion, error) {
+	args := m.Called(ctx, documentID, status)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).([]*model.DocumentVersion), args.Error(1)
+}
+
+func (m *MockDocumentVersionRepository) Update(ctx context.Context, id string, updates map[string]interface{}) error {
+	args := m.Called(ctx, id, updates)
+	return args.Error(0)
+}
+
+func (m *MockDocumentVersionRepository) UpdateByDocumentIDAndVersion(ctx context.Context, documentID, version string, updates map[string]interface{}) error {
+	args := m.Called(ctx, documentID, version, updates)
+	return args.Error(0)
+}
+
+func (m *MockDocumentVersionRepository) UpdateContent(ctx context.Context, documentID, version string, content string, status model.DocumentStatus) error {
+	args := m.Called(ctx, documentID, version, content, status)
+	return args.Error(0)
+}
+
+func (m *MockDocumentVersionRepository) UpdateStatus(ctx context.Context, documentID, version string, status model.DocumentStatus) error {
+	args := m.Called(ctx, documentID, version, status)
+	return args.Error(0)
+}
+
 // MockStorageService 模拟StorageService
 type MockStorageService struct {
 	mock.Mock
@@ -133,6 +313,154 @@ func (m *MockStorageService) GenerateFilePath(documentID, fileName string) strin
 	}
 	args := m.Called(documentID, fileName)
 	return args.String(0)
+}
+
+func (m *MockStorageService) CopyFile(ctx context.Context, srcPath, dstPath string) error {
+	args := m.Called(ctx, srcPath, dstPath)
+	return args.Error(0)
+}
+
+func (m *MockStorageService) DeleteFile(ctx context.Context, path string) error {
+	args := m.Called(ctx, path)
+	return args.Error(0)
+}
+
+func (m *MockStorageService) FileExists(ctx context.Context, path string) bool {
+	args := m.Called(ctx, path)
+	return args.Bool(0)
+}
+
+func (m *MockStorageService) GetFile(ctx context.Context, path string) ([]byte, error) {
+	args := m.Called(ctx, path)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).([]byte), args.Error(1)
+}
+
+func (m *MockStorageService) GetFileSize(ctx context.Context, path string) (int64, error) {
+	args := m.Called(ctx, path)
+	return args.Get(0).(int64), args.Error(1)
+}
+
+func (m *MockStorageService) GetFileStream(ctx context.Context, path string) (io.ReadCloser, error) {
+	args := m.Called(ctx, path)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).(io.ReadCloser), args.Error(1)
+}
+
+func (m *MockStorageService) SaveFileStream(ctx context.Context, path string, reader io.Reader) error {
+	args := m.Called(ctx, path, reader)
+	return args.Error(0)
+}
+
+func (m *MockStorageService) MoveFile(ctx context.Context, srcPath, dstPath string) error {
+	args := m.Called(ctx, srcPath, dstPath)
+	return args.Error(0)
+}
+
+func (m *MockStorageService) HealthCheck(ctx context.Context) error {
+	args := m.Called(ctx)
+	return args.Error(0)
+}
+
+// MockDocumentMetadataRepository 模拟DocumentMetadataRepository
+type MockDocumentMetadataRepository struct {
+	mock.Mock
+	CreateFunc             func(ctx context.Context, metadata *model.DocumentMetadata) error
+	GetByIDFunc            func(ctx context.Context, id string) (*model.DocumentMetadata, error)
+	GetByDocumentIDFunc    func(ctx context.Context, documentID string) ([]*model.DocumentMetadata, error)
+	GetLatestFunc          func(ctx context.Context, documentID string) (*model.DocumentMetadata, error)
+	CountFunc              func(ctx context.Context, documentID string) (int64, error)
+	UpdateFunc             func(ctx context.Context, id string, updates map[string]interface{}) error
+	DeleteFunc             func(ctx context.Context, id string) error
+	DeleteByDocumentIDFunc func(ctx context.Context, documentID string) error
+}
+
+func (m *MockDocumentMetadataRepository) Create(ctx context.Context, metadata *model.DocumentMetadata) error {
+	if m.CreateFunc != nil {
+		return m.CreateFunc(ctx, metadata)
+	}
+	args := m.Called(ctx, metadata)
+	return args.Error(0)
+}
+
+func (m *MockDocumentMetadataRepository) GetByID(ctx context.Context, id string) (*model.DocumentMetadata, error) {
+	if m.GetByIDFunc != nil {
+		return m.GetByIDFunc(ctx, id)
+	}
+	args := m.Called(ctx, id)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).(*model.DocumentMetadata), args.Error(1)
+}
+
+func (m *MockDocumentMetadataRepository) GetByDocumentID(ctx context.Context, documentID string) ([]*model.DocumentMetadata, error) {
+	if m.GetByDocumentIDFunc != nil {
+		return m.GetByDocumentIDFunc(ctx, documentID)
+	}
+	args := m.Called(ctx, documentID)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).([]*model.DocumentMetadata), args.Error(1)
+}
+
+func (m *MockDocumentMetadataRepository) GetLatest(ctx context.Context, documentID string) (*model.DocumentMetadata, error) {
+	if m.GetLatestFunc != nil {
+		return m.GetLatestFunc(ctx, documentID)
+	}
+	args := m.Called(ctx, documentID)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).(*model.DocumentMetadata), args.Error(1)
+}
+
+func (m *MockDocumentMetadataRepository) GetLatestMetadata(ctx context.Context, documentID string) (*model.DocumentMetadata, error) {
+	if m.GetLatestFunc != nil {
+		return m.GetLatestFunc(ctx, documentID)
+	}
+	args := m.Called(ctx, documentID)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).(*model.DocumentMetadata), args.Error(1)
+}
+
+func (m *MockDocumentMetadataRepository) Count(ctx context.Context, documentID string) (int64, error) {
+	if m.CountFunc != nil {
+		return m.CountFunc(ctx, documentID)
+	}
+	args := m.Called(ctx, documentID)
+	return args.Get(0).(int64), args.Error(1)
+}
+
+func (m *MockDocumentMetadataRepository) Update(ctx context.Context, id string, updates map[string]interface{}) error {
+	if m.UpdateFunc != nil {
+		return m.UpdateFunc(ctx, id, updates)
+	}
+	args := m.Called(ctx, id, updates)
+	return args.Error(0)
+}
+
+func (m *MockDocumentMetadataRepository) Delete(ctx context.Context, id string) error {
+	if m.DeleteFunc != nil {
+		return m.DeleteFunc(ctx, id)
+	}
+	args := m.Called(ctx, id)
+	return args.Error(0)
+}
+
+func (m *MockDocumentMetadataRepository) DeleteByDocumentID(ctx context.Context, documentID string) error {
+	if m.DeleteByDocumentIDFunc != nil {
+		return m.DeleteByDocumentIDFunc(ctx, documentID)
+	}
+	args := m.Called(ctx, documentID)
+	return args.Error(0)
 }
 
 // TestDocumentService_UploadDocumentSuccess 测试成功上传文档
@@ -165,7 +493,7 @@ func TestDocumentService_UploadDocumentSuccess(t *testing.T) {
 	service := NewDocumentService(
 		mockDocRepo,
 		mockVersionRepo,
-		new(MockDocumentRepository), // Mock for metadata repo
+		new(MockDocumentMetadataRepository), // Mock for metadata repo
 		mockStorage,
 		nil,                    // parser service
 		new(MockSearchService), // Mock for search service
@@ -186,7 +514,7 @@ func TestDocumentService_UploadDocumentSuccess(t *testing.T) {
 	assert.NotNil(t, doc)
 	assert.Equal(t, "Test Doc", doc.Name)
 	assert.Equal(t, model.DocumentType("pdf"), doc.Type)
-	assert.Equal(t, model.DocumentVersion("1.0"), doc.Version)
+	assert.Equal(t, "1.0", doc.Version)
 
 	// 验证mock调用
 	mockDocRepo.AssertCalled(t, "List")
@@ -223,7 +551,7 @@ func TestDocumentService_UploadDocument_DuplicateVersion(t *testing.T) {
 	service := NewDocumentService(
 		mockDocRepo,
 		mockVersionRepo,
-		new(MockDocumentRepository),
+		new(MockDocumentMetadataRepository),
 		mockStorage,
 		nil,
 		new(MockSearchService),
@@ -257,7 +585,7 @@ func TestDocumentService_UploadDocument_InvalidType(t *testing.T) {
 	service := NewDocumentService(
 		mockDocRepo,
 		new(MockDocumentVersionRepository),
-		new(MockDocumentRepository),
+		new(MockDocumentMetadataRepository),
 		mockStorage,
 		nil,
 		new(MockSearchService),
@@ -289,11 +617,11 @@ func TestDocumentService_GetDocumentWithVersions(t *testing.T) {
 		DocumentID:  "doc-id",
 		Version:     "2.0",
 		Content:     "test content",
-		Status:      model.DocumentStatusReady,
+		Status:      model.DocumentStatusCompleted,
 		Description: "version description",
 		FilePath:    "/test/path",
 		FileSize:    2048,
-		UpdatedAt:   mock.Anything,
+		UpdatedAt:   time.Now(),
 	}
 
 	document := &model.Document{
@@ -312,7 +640,7 @@ func TestDocumentService_GetDocumentWithVersions(t *testing.T) {
 	service := NewDocumentService(
 		mockDocRepo,
 		mockVersionRepo,
-		new(MockDocumentRepository),
+		new(MockDocumentMetadataRepository),
 		new(MockStorageService),
 		nil,
 		new(MockSearchService),
@@ -348,7 +676,7 @@ func TestDocumentService_DeleteDocument(t *testing.T) {
 	service := NewDocumentService(
 		mockDocRepo,
 		new(MockDocumentVersionRepository),
-		new(MockDocumentRepository),
+		new(MockDocumentMetadataRepository),
 		new(MockStorageService),
 		nil,
 		new(MockSearchService),
@@ -377,7 +705,7 @@ func TestDocumentService_DeleteDocumentError(t *testing.T) {
 	service := NewDocumentService(
 		mockDocRepo,
 		new(MockDocumentVersionRepository),
-		new(MockDocumentRepository),
+		new(MockDocumentMetadataRepository),
 		new(MockStorageService),
 		nil,
 		new(MockSearchService),

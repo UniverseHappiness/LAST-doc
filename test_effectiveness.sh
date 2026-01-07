@@ -105,7 +105,7 @@ print_test "获取测试凭证（API密钥和JWT Token）"
 # 使用admin凭证
 JWT_TOKEN=$(curl -s -X POST "$BACKEND_URL/api/v1/auth/login" \
     -H "Content-Type: application/json" \
-    -d '{"username":"admin","password":"admin"}' | \
+    -d '{"username":"admin","password":"123456"}' | \
     grep -o '"token":"[^"]*"' | cut -d'"' -f4)
 
 if [ -n "$JWT_TOKEN" ]; then
